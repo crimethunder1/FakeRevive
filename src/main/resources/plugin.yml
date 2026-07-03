@@ -7,4 +7,5 @@ commands:
   revive:
     description: Belebt einen oder alle Spieler aus dem Spectator-Modus wieder.
     permission: fakeleaveandrevive.revive
+    permission-message: "§cDu hast keine Rechte für diesen Befehl!"
     usage: /revive <Spieler/@a>

@@ -21,11 +21,6 @@ public class ReviveCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!sender.hasPermission("fakeleaveandrevive.revive")) {
-            sender.sendMessage(Component.text("Du hast keine Rechte für diesen Befehl!", NamedTextColor.RED));
-            return true;
-        }
-
         if (args.length != 1) {
             sender.sendMessage(Component.text("Benutzung: /revive <Spieler> oder /revive @a", NamedTextColor.RED));
             return true;
