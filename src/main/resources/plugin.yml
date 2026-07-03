@@ -1,0 +1,10 @@
+name: FakeLeaveAndRevive
+version: 1.2
+main: de.tutorial.plugin.MeinPlugin
+api-version: '1.21'
+description: Zeigt Todesnachricht + Fake-Leave und bietet /revive <Spieler/@a>.
+commands:
+  revive:
+    description: Belebt einen oder alle Spieler aus dem Spectator-Modus wieder.
+    permission: meinplugin.revive
+    usage: /revive <Spieler/@a>
