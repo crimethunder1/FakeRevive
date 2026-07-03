@@ -1,6 +1,8 @@
 package com.deathrevive.plugin.command;
 
 import com.deathrevive.plugin.listener.FakeLeaveListener;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -20,12 +22,12 @@ public class ReviveCommand implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.hasPermission("meinplugin.revive")) {
-            sender.sendMessage("§cDu hast keine Rechte für diesen Befehl!");
+            sender.sendMessage(Component.text("Du hast keine Rechte für diesen Befehl!", NamedTextColor.RED));
             return true;
         }
 
         if (args.length != 1) {
-            sender.sendMessage("§cBenutzung: /revive <Spieler> oder /revive @a");
+            sender.sendMessage(Component.text("Benutzung: /revive <Spieler> oder /revive @a", NamedTextColor.RED));
             return true;
         }
 
@@ -47,9 +49,13 @@ public class ReviveCommand implements CommandExecutor {
             }
 
             if (revivedCount == 0) {
-                sender.sendMessage("§eEs gab keine Spieler im Spectator-Modus, die wiederbelebt werden konnten.");
+                sender.sendMessage(Component.text(
+                        "Es gab keine Spieler im Spectator-Modus, die wiederbelebt werden konnten.",
+                        NamedTextColor.YELLOW));
             } else {
-                sender.sendMessage("§aEs wurden erfolgreich §e" + revivedCount + " §aSpieler wiederbelebt!");
+                sender.sendMessage(Component.text("Es wurden erfolgreich ", NamedTextColor.GREEN)
+                        .append(Component.text(revivedCount, NamedTextColor.YELLOW))
+                        .append(Component.text(" Spieler wiederbelebt!", NamedTextColor.GREEN)));
             }
             return true;
         }
@@ -57,17 +63,17 @@ public class ReviveCommand implements CommandExecutor {
         Player target = Bukkit.getPlayer(args[0]);
 
         if (target == null) {
-            sender.sendMessage("§cDieser Spieler wurde nicht gefunden.");
+            sender.sendMessage(Component.text("Dieser Spieler wurde nicht gefunden.", NamedTextColor.RED));
             return true;
         }
 
         if (!fakeLeaveListener.isFakedOut(target.getUniqueId())) {
-            sender.sendMessage("§cDieser Spieler ist nicht im Spectator-Modus!");
+            sender.sendMessage(Component.text("Dieser Spieler ist nicht im Spectator-Modus!", NamedTextColor.RED));
             return true;
         }
 
         revivePlayer(target, spawnLocation);
-        sender.sendMessage("§aDu hast " + target.getName() + " erfolgreich wiederbelebt!");
+        sender.sendMessage(Component.text("Du hast " + target.getName() + " erfolgreich wiederbelebt!", NamedTextColor.GREEN));
         return true;
     }
 

@@ -1,5 +1,7 @@
 package com.deathrevive.plugin.listener;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -33,14 +35,14 @@ public class FakeLeaveListener implements Listener {
         Player player = event.getEntity();
         Location deathLocation = player.getLocation();
         UUID playerId = player.getUniqueId();
-        String originalDeathMessage = event.getDeathMessage();
+        Component originalDeathMessage = event.deathMessage();
 
         if (originalDeathMessage != null) {
-            Bukkit.broadcastMessage(originalDeathMessage);
+            Bukkit.broadcast(originalDeathMessage);
         }
 
-        event.setDeathMessage(null);
-        Bukkit.broadcastMessage("§e" + player.getName() + " left the game");
+        event.deathMessage(null);
+        Bukkit.broadcast(Component.text(player.getName() + " left the game", NamedTextColor.YELLOW));
 
         fakedOutPlayers.add(playerId);
 
