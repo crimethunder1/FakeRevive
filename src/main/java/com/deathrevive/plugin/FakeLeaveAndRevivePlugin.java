@@ -1,5 +1,6 @@
 package com.deathrevive.plugin;
 
+import com.deathrevive.plugin.listener.FakeLeaveListener;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -7,18 +8,14 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.Listener;
-import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
-public class FakeLeaveAndRevivePlugin extends JavaPlugin implements Listener, CommandExecutor {
+public class FakeLeaveAndRevivePlugin extends JavaPlugin implements CommandExecutor {
 
     @Override
     public void onEnable() {
-        getServer().getPluginManager().registerEvents(this, this);
+        FakeLeaveListener fakeLeaveListener = new FakeLeaveListener(this);
+        getServer().getPluginManager().registerEvents(fakeLeaveListener, this);
         this.getCommand("revive").setExecutor(this);
         getLogger().info("Fake-Leave & Revive (Paper-Native) erfolgreich aktiviert!");
     }
@@ -26,37 +23,6 @@ public class FakeLeaveAndRevivePlugin extends JavaPlugin implements Listener, Co
     @Override
     public void onDisable() {
         getLogger().info("Fake-Leave & Revive Plugin deactivated.");
-    }
-
-    @EventHandler
-    public void onPlayerDeath(PlayerDeathEvent event) {
-        Player player = event.getEntity();
-        Location deathLocation = player.getLocation();
-        String originalDeathMessage = event.getDeathMessage();
-
-        if (originalDeathMessage != null) {
-            Bukkit.broadcastMessage(originalDeathMessage);
-        }
-
-        event.setDeathMessage(null);
-
-        String leaveMessage = "§e" + player.getName() + " left the game";
-        Bukkit.broadcastMessage(leaveMessage);
-
-        Bukkit.getScheduler().runTaskLater(this, () -> {
-            player.spigot().respawn();
-            player.setGameMode(GameMode.SPECTATOR);
-            player.teleport(deathLocation);
-        }, 1L);
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST)
-    public void onPlayerQuit(PlayerQuitEvent event) {
-        Player player = event.getPlayer();
-
-        if (player.getGameMode() == GameMode.SPECTATOR) {
-            event.quitMessage(null);
-        }
     }
 
     @Override
