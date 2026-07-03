@@ -1,5 +1,5 @@
 name: FakeLeaveAndRevive
-version: 1.2
+version: ${project.version}
 main: de.tutorial.plugin.MeinPlugin
 api-version: '1.21'
 description: Zeigt Todesnachricht + Fake-Leave und bietet /revive <Spieler/@a>.
