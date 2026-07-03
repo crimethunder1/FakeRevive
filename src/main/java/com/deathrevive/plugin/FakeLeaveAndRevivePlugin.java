@@ -1,4 +1,4 @@
-package de.tutorial.plugin;
+package com.deathrevive.plugin;
 
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
@@ -14,7 +14,7 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
-public class MeinPlugin extends JavaPlugin implements Listener, CommandExecutor {
+public class FakeLeaveAndRevivePlugin extends JavaPlugin implements Listener, CommandExecutor {
 
     @Override
     public void onEnable() {
@@ -50,14 +50,11 @@ public class MeinPlugin extends JavaPlugin implements Listener, CommandExecutor 
         }, 1L);
     }
 
-    // Hier nutzen wir jetzt die modernste Paper-Methode
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
 
         if (player.getGameMode() == GameMode.SPECTATOR) {
-            // event.quitMessage(null) sagt Paper, dass die Nachricht GAR NICHT ERST ANGEZEIGT WIRD.
-            // Es wird absolut nichts in den Chat geschrieben, nicht mal eine leere Zeile.
             event.quitMessage(null);
         }
     }
@@ -123,6 +120,5 @@ public class MeinPlugin extends JavaPlugin implements Listener, CommandExecutor 
     private void revivePlayer(Player player, Location loc) {
         player.setGameMode(GameMode.SURVIVAL);
         player.teleport(loc);
-
     }
 }
