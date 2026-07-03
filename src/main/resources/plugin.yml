@@ -6,5 +6,5 @@ description: Zeigt Todesnachricht + Fake-Leave und bietet /revive <Spieler/@a>.
 commands:
   revive:
     description: Belebt einen oder alle Spieler aus dem Spectator-Modus wieder.
-    permission: meinplugin.revive
+    permission: fakeleaveandrevive.revive
     usage: /revive <Spieler/@a>
