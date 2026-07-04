@@ -2,6 +2,7 @@ package com.deathrevive.plugin.listener;
 
 import com.deathrevive.plugin.FakeLeaveAndRevivePlugin;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -17,15 +18,17 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FakeLeaveListenerTest {
 
     private ServerMock server;
+    private FakeLeaveAndRevivePlugin plugin;
 
     @BeforeEach
     void setUp() {
         server = MockBukkit.mock();
-        MockBukkit.load(FakeLeaveAndRevivePlugin.class);
+        plugin = MockBukkit.load(FakeLeaveAndRevivePlugin.class);
     }
 
     @AfterEach
@@ -64,6 +67,32 @@ class FakeLeaveListenerTest {
         Bukkit.getPluginManager().callEvent(quitEvent);
 
         assertNotNull(quitEvent.quitMessage());
+    }
+
+    @Test
+    void usesFakeNameInsteadOfRealNameInBroadcastAfterRevive() {
+        PlayerMock admin = server.addPlayer("Admin");
+        admin.setOp(true);
+        PlayerMock target = server.addPlayer("Target");
+        PlayerMock bystander = server.addPlayer("Bystander");
+
+        target.damage(target.getHealth() + 1);
+        server.dispatchCommand(admin, "revive Target");
+
+        String fakeName = plugin.getActiveDisguiseRegistry().getFakeName(target.getUniqueId()).orElseThrow();
+        drainMessages(bystander);
+
+        target.damage(target.getHealth() + 1);
+
+        assertEquals(
+                Component.text(fakeName + " left the game", NamedTextColor.YELLOW),
+                bystander.nextComponentMessage());
+        assertTrue(plugin.getActiveDisguiseRegistry().getFakeName(target.getUniqueId()).isEmpty());
+    }
+
+    private void drainMessages(PlayerMock player) {
+        while (player.nextComponentMessage() != null) {
+        }
     }
 
     @Test

@@ -1,5 +1,8 @@
 package com.deathrevive.plugin.command;
 
+import com.deathrevive.plugin.disguise.ActiveDisguiseRegistry;
+import com.deathrevive.plugin.disguise.FakeNamePool;
+import com.deathrevive.plugin.disguise.PlayerDisguiseService;
 import com.deathrevive.plugin.listener.FakeLeaveListener;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -11,12 +14,25 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import java.util.Optional;
+import java.util.logging.Logger;
+
 public class ReviveCommand implements CommandExecutor {
 
     private final FakeLeaveListener fakeLeaveListener;
+    private final FakeNamePool fakeNamePool;
+    private final ActiveDisguiseRegistry activeDisguiseRegistry;
+    private final PlayerDisguiseService playerDisguiseService;
+    private final Logger logger;
 
-    public ReviveCommand(FakeLeaveListener fakeLeaveListener) {
+    public ReviveCommand(FakeLeaveListener fakeLeaveListener, FakeNamePool fakeNamePool,
+                          ActiveDisguiseRegistry activeDisguiseRegistry, PlayerDisguiseService playerDisguiseService,
+                          Logger logger) {
         this.fakeLeaveListener = fakeLeaveListener;
+        this.fakeNamePool = fakeNamePool;
+        this.activeDisguiseRegistry = activeDisguiseRegistry;
+        this.playerDisguiseService = playerDisguiseService;
+        this.logger = logger;
     }
 
     @Override
@@ -76,5 +92,14 @@ public class ReviveCommand implements CommandExecutor {
         fakeLeaveListener.clearFakedOut(player.getUniqueId());
         player.setGameMode(GameMode.SURVIVAL);
         player.teleport(location);
+
+        Optional<String> fakeName = fakeNamePool.assignRandomName();
+        if (fakeName.isPresent()) {
+            activeDisguiseRegistry.assign(player.getUniqueId(), fakeName.get());
+            playerDisguiseService.apply(player, fakeName.get());
+        } else {
+            logger.warning("Fake-Namen-Pool ist erschöpft, " + player.getName()
+                    + " wird ohne neue Verkleidung wiederbelebt.");
+        }
     }
 }
