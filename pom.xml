@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.deathrevive</groupId>
-    <artifactId>FakeLeaveAndRevive</artifactId>
+    <artifactId>fake-leave-and-revive</artifactId>
     <version>1.0.0</version>
 
     <properties>

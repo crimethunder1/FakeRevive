@@ -33,6 +33,18 @@ class ReviveCommandTest {
     }
 
     @Test
+    void deniesCommandForSenderWithoutPermission() {
+        PlayerMock guest = server.addPlayer("Guest");
+
+        boolean handled = server.dispatchCommand(guest, "revive Target");
+
+        assertTrue(handled);
+        assertEquals(
+                Component.text("Du hast keine Rechte für diesen Befehl!", NamedTextColor.RED),
+                guest.nextComponentMessage());
+    }
+
+    @Test
     void deniesUsageWithoutExactlyOneArgument() {
         boolean handled = server.dispatchCommand(op, "revive");
 
@@ -118,7 +130,6 @@ class ReviveCommandTest {
 
     private void drainMessages(PlayerMock player) {
         while (player.nextComponentMessage() != null) {
-            // no-op
         }
     }
 }

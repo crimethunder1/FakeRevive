@@ -21,7 +21,9 @@ Voraussetzungen: JDK 21, Maven.
 mvn package
 ```
 
-Das fertige Plugin liegt danach unter `target/FakeLeaveAndRevive-<version>.jar` und kann in den `plugins`-Ordner eines Paper-Servers (1.21.4+) kopiert werden.
+Das fertige Plugin liegt danach unter `target/fake-leave-and-revive-<version>.jar` und kann in den `plugins`-Ordner eines Paper-Servers (1.21.4+) kopiert werden.
+
+Unter JDK 25 kann der Build (auch `mvn test`) mit `Cannot load from object array because "this.hashes" is null` fehlschlagen (javac-Bug, unabhängig vom Plugin-Code). Workaround: `-Dmaven.compiler.fork=true` anhängen, z.B. `mvn package -Dmaven.compiler.fork=true`.
 
 ## Tests
 

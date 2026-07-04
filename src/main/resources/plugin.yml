@@ -9,3 +9,7 @@ commands:
     permission: fakeleaveandrevive.revive
     permission-message: "§cDu hast keine Rechte für diesen Befehl!"
     usage: /revive <Spieler/@a>
+permissions:
+  fakeleaveandrevive.revive:
+    description: Erlaubt die Nutzung von /revive.
+    default: op
