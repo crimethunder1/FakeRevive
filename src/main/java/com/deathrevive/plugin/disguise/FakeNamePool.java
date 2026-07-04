@@ -1,10 +1,14 @@
 package com.deathrevive.plugin.disguise;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
+import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -14,13 +18,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class FakeNamePool {
 
     private static final String USED_NAMES_KEY = "used-names";
-    private static final Pattern JSON_STRING = Pattern.compile("\"([^\"]*)\"");
+    private static final Gson GSON = new Gson();
+    private static final Type NAME_LIST_TYPE = new TypeToken<List<String>>() {
+    }.getType();
 
     private final List<String> availableNames;
     private final Set<String> usedNames;
@@ -32,35 +36,33 @@ public class FakeNamePool {
     }
 
     FakeNamePool(InputStream namesResource, Path usedNamesFile, Random random) {
-        this.availableNames = readNames(namesResource);
         this.usedNamesFile = usedNamesFile;
         this.usedNames = new LinkedHashSet<>(readUsedNames(usedNamesFile));
+        this.availableNames = readNames(namesResource);
+        this.availableNames.removeAll(this.usedNames);
         this.random = random;
     }
 
     public Optional<String> assignRandomName() {
-        List<String> remaining = new ArrayList<>(availableNames);
-        remaining.removeAll(usedNames);
-
-        if (remaining.isEmpty()) {
+        if (availableNames.isEmpty()) {
             return Optional.empty();
         }
 
-        String name = remaining.get(random.nextInt(remaining.size()));
+        int index = random.nextInt(availableNames.size());
+        int lastIndex = availableNames.size() - 1;
+        String name = availableNames.get(index);
+        availableNames.set(index, availableNames.get(lastIndex));
+        availableNames.remove(lastIndex);
+
         usedNames.add(name);
         persistUsedNames();
         return Optional.of(name);
     }
 
     private static List<String> readNames(InputStream namesResource) {
-        try (InputStream stream = namesResource) {
-            String json = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-            List<String> names = new ArrayList<>();
-            Matcher matcher = JSON_STRING.matcher(json);
-            while (matcher.find()) {
-                names.add(matcher.group(1));
-            }
-            return names;
+        try (InputStreamReader reader = new InputStreamReader(namesResource, StandardCharsets.UTF_8)) {
+            List<String> names = GSON.fromJson(reader, NAME_LIST_TYPE);
+            return names != null ? new ArrayList<>(names) : new ArrayList<>();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }

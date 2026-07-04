@@ -43,6 +43,20 @@ class FakeNamePoolTest {
     }
 
     @Test
+    void parsesPrettyPrintedMultilineJsonAsProducedByTheGenerator(@TempDir Path tempDir) {
+        String prettyJson = "[\n  \"Alpha_Wolf\",\n  \"Beta_Falcon\",\n  \"Gamma_Tiger\"\n]\n";
+        InputStream stream = new ByteArrayInputStream(prettyJson.getBytes(StandardCharsets.UTF_8));
+        FakeNamePool pool = new FakeNamePool(stream, tempDir.resolve("used.yml"), new Random(1));
+
+        Set<String> assigned = new HashSet<>();
+        for (int i = 0; i < 3; i++) {
+            assigned.add(pool.assignRandomName().orElseThrow());
+        }
+
+        assertEquals(Set.of("Alpha_Wolf", "Beta_Falcon", "Gamma_Tiger"), assigned);
+    }
+
+    @Test
     void neverReassignsNamesPersistedFromAnEarlierProcess(@TempDir Path tempDir) {
         Path usedNamesFile = tempDir.resolve("used.yml");
 

@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 
@@ -31,10 +32,15 @@ public final class NameListGenerator {
             "Nomad", "Rogue", "Warden", "Scout", "Hawk", "Lynx", "Puma", "Drifter", "Marauder", "Sentinel"
     };
 
-    private static final int TARGET_NAME_COUNT = 500;
+    private static final int TARGET_NAME_COUNT = 5000;
+    private static final int MAX_CANDIDATE_POOL = TARGET_NAME_COUNT * 8;
+    private static final int MAX_SUFFIXES_PER_BASE_NAME = 20;
+    private static final int MAX_SUFFIX_VALUE = 9999;
     private static final int MAX_NAME_LENGTH = 16;
     private static final int MIN_NAME_LENGTH = 3;
-    private static final Duration REQUEST_DELAY = Duration.ofMillis(200);
+    private static final Duration REQUEST_DELAY = Duration.ofMillis(700);
+    private static final Duration INITIAL_BACKOFF = Duration.ofSeconds(2);
+    private static final int MAX_RETRIES_ON_RATE_LIMIT = 5;
 
     private NameListGenerator() {
     }
@@ -43,22 +49,33 @@ public final class NameListGenerator {
         Path outputFile = Path.of(args.length > 0 ? args[0] : "src/main/resources/names.json");
 
         List<String> candidates = buildCandidates();
+        System.out.println("Built " + candidates.size() + " candidates, checking against Mojang API...");
+
         HttpClient httpClient = HttpClient.newHttpClient();
         List<String> freeNames = new ArrayList<>();
 
-        for (String candidate : candidates) {
-            if (freeNames.size() >= TARGET_NAME_COUNT) {
-                break;
-            }
-            if (isFreeOnMojang(httpClient, candidate)) {
-                freeNames.add(candidate);
-                System.out.println("Free: " + candidate + " (" + freeNames.size() + "/" + TARGET_NAME_COUNT + ")");
-            }
-            Thread.sleep(REQUEST_DELAY.toMillis());
-        }
+        try {
+            for (String candidate : candidates) {
+                if (freeNames.size() >= TARGET_NAME_COUNT) {
+                    break;
+                }
 
-        writeJson(outputFile, freeNames);
-        System.out.println("Wrote " + freeNames.size() + " names to " + outputFile.toAbsolutePath());
+                Optional<Boolean> free = isFreeOnMojang(httpClient, candidate);
+                if (free.isEmpty()) {
+                    continue;
+                }
+                if (free.get()) {
+                    freeNames.add(candidate);
+                    System.out.println(
+                            "Free: " + candidate + " (" + freeNames.size() + "/" + TARGET_NAME_COUNT + ")");
+                }
+
+                Thread.sleep(REQUEST_DELAY.toMillis());
+            }
+        } finally {
+            writeJson(outputFile, freeNames);
+            System.out.println("Wrote " + freeNames.size() + " names to " + outputFile.toAbsolutePath());
+        }
     }
 
     private static List<String> buildCandidates() {
@@ -73,8 +90,8 @@ public final class NameListGenerator {
 
         List<String> base = new ArrayList<>(candidates);
         for (String name : base) {
-            for (int i = 0; i < 3 && candidates.size() < TARGET_NAME_COUNT * 4; i++) {
-                int suffix = 1 + random.nextInt(999);
+            for (int i = 0; i < MAX_SUFFIXES_PER_BASE_NAME && candidates.size() < MAX_CANDIDATE_POOL; i++) {
+                int suffix = 1 + random.nextInt(MAX_SUFFIX_VALUE);
                 addIfValid(candidates, name + suffix);
             }
         }
@@ -90,15 +107,43 @@ public final class NameListGenerator {
         }
     }
 
-    private static boolean isFreeOnMojang(HttpClient httpClient, String name) throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("https://api.mojang.com/users/profiles/minecraft/" + name))
-                .timeout(Duration.ofSeconds(10))
-                .GET()
-                .build();
+    /**
+     * @return empty if the name could not be checked (rate-limited or network-flaky past the retry
+     *         budget), otherwise whether the name is free to use.
+     */
+    private static Optional<Boolean> isFreeOnMojang(HttpClient httpClient, String name) throws InterruptedException {
+        Duration backoff = INITIAL_BACKOFF;
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        return response.statusCode() == 404;
+        for (int attempt = 0; attempt <= MAX_RETRIES_ON_RATE_LIMIT; attempt++) {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://api.mojang.com/users/profiles/minecraft/" + name))
+                    .timeout(Duration.ofSeconds(10))
+                    .GET()
+                    .build();
+
+            String retryReason;
+            try {
+                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode() != 429) {
+                    return Optional.of(response.statusCode() == 404);
+                }
+                retryReason = "429 rate limit";
+            } catch (IOException e) {
+                retryReason = e.getClass().getSimpleName() + ": " + e.getMessage();
+            }
+
+            if (attempt == MAX_RETRIES_ON_RATE_LIMIT) {
+                System.out.println("Skipping " + name + " after repeated failures (" + retryReason + ")");
+                return Optional.empty();
+            }
+
+            System.out.println("Retrying " + name + " after " + retryReason + ", backing off "
+                    + backoff.getSeconds() + "s");
+            Thread.sleep(backoff.toMillis());
+            backoff = backoff.multipliedBy(2);
+        }
+
+        return Optional.empty();
     }
 
     private static void writeJson(Path outputFile, List<String> names) throws IOException {
