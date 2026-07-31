@@ -5,12 +5,15 @@ import com.github.retrooper.packetevents.event.PacketListenerAbstract;
 import com.github.retrooper.packetevents.event.PacketSendEvent;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.protocol.player.TextureProperty;
+import com.github.retrooper.packetevents.protocol.player.User;
 import com.github.retrooper.packetevents.protocol.player.UserProfile;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfoRemove;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfoUpdate;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -35,17 +38,30 @@ public class PlayerDisguiseService {
 
     public void apply(Player player, FakeIdentity identity) {
         if (plugin == null || !isPacketEventsAvailable()) return;
-        refreshEntityForAllObservers(player);
+        UserProfile fakeProfile = new UserProfile(player.getUniqueId(), identity.name(),
+                List.of(new TextureProperty("textures", identity.skinValue(), identity.skinSignature())));
+        refreshEntityForAllObservers(player, fakeProfile);
     }
 
     public void remove(Player player) {
         if (plugin == null || !isPacketEventsAvailable()) return;
-        refreshEntityForAllObservers(player);
+        User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
+        UserProfile realProfile = user.getProfile();
+        refreshEntityForAllObservers(player, realProfile);
     }
 
-    private void refreshEntityForAllObservers(Player player) {
+    private void refreshEntityForAllObservers(Player player, UserProfile profile) {
+        UUID playerId = player.getUniqueId();
         for (Player observer : Bukkit.getOnlinePlayers()) {
-            if (observer.getUniqueId().equals(player.getUniqueId())) continue;
+            if (observer.getUniqueId().equals(playerId)) continue;
+
+            PacketEvents.getAPI().getPlayerManager().sendPacket(observer,
+                    new WrapperPlayServerPlayerInfoRemove(List.of(playerId)));
+            PacketEvents.getAPI().getPlayerManager().sendPacket(observer,
+                    new WrapperPlayServerPlayerInfoUpdate(
+                            EnumSet.of(WrapperPlayServerPlayerInfoUpdate.Action.ADD_PLAYER),
+                            List.of(new WrapperPlayServerPlayerInfoUpdate.PlayerInfo(profile))));
+
             observer.hidePlayer(plugin, player);
             observer.showPlayer(plugin, player);
         }
