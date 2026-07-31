@@ -19,6 +19,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
 public class ReviveCommand implements CommandExecutor {
@@ -32,6 +33,7 @@ public class ReviveCommand implements CommandExecutor {
     private final PlayerDisguiseService playerDisguiseService;
     private final MojangIdentityFetcher identityFetcher;
     private final Logger logger;
+    private final AtomicBoolean replenishInProgress = new AtomicBoolean(false);
 
     public ReviveCommand(JavaPlugin plugin, FakeLeaveListener fakeLeaveListener, FakeNamePool fakeNamePool,
                           ActiveDisguiseRegistry activeDisguiseRegistry, PlayerDisguiseService playerDisguiseService,
@@ -118,11 +120,23 @@ public class ReviveCommand implements CommandExecutor {
      * Fetches one fresh name+skin identity from the real Mojang API to replace the one just
      * handed out, keeping the pool topped up over time. Runs off the main thread since it makes
      * blocking network calls; only the final pool update is hopped back onto the main thread.
+     * Skips starting a new fetch while one is already running, so e.g. `/revive @a` on a large
+     * group doesn't fire a burst of parallel requests at Mojang - the next revive after this one
+     * finishes will trigger the following top-up.
      */
     private void replenishPool() {
+        if (!replenishInProgress.compareAndSet(false, true)) {
+            return;
+        }
+
         Set<String> knownNames = fakeNamePool.getKnownNames();
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () ->
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
                 identityFetcher.fetchNewIdentity(knownNames, REPLENISH_MAX_ATTEMPTS)
-                        .ifPresent(identity -> Bukkit.getScheduler().runTask(plugin, () -> fakeNamePool.offer(identity))));
+                        .ifPresent(identity -> Bukkit.getScheduler().runTask(plugin, () -> fakeNamePool.offer(identity)));
+            } finally {
+                replenishInProgress.set(false);
+            }
+        });
     }
 }
