@@ -1,6 +1,8 @@
 package com.deathrevive.plugin.command;
 
 import com.deathrevive.plugin.FakeLeaveAndRevivePlugin;
+import com.deathrevive.plugin.disguise.FakeIdentity;
+import com.deathrevive.plugin.disguise.MojangIdentityFetcher;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.GameMode;
@@ -10,6 +12,9 @@ import org.junit.jupiter.api.Test;
 import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.entity.PlayerMock;
+
+import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -21,6 +26,14 @@ class ReviveCommandTest {
 
     @BeforeEach
     void setUp() {
+        // MockBukkit executes runTaskAsynchronously immediately on a real thread, so without
+        // this stub every revive in these tests would hit the live Mojang API for replenishment.
+        FakeLeaveAndRevivePlugin.setIdentityFetcherFactoryForTesting(() -> new MojangIdentityFetcher() {
+            @Override
+            public Optional<FakeIdentity> fetchNewIdentity(Set<String> excludedNames, int maxAttempts) {
+                return Optional.empty();
+            }
+        });
         server = MockBukkit.mock();
         MockBukkit.load(FakeLeaveAndRevivePlugin.class);
         op = server.addPlayer("Admin");
@@ -30,6 +43,7 @@ class ReviveCommandTest {
     @AfterEach
     void tearDown() {
         MockBukkit.unmock();
+        FakeLeaveAndRevivePlugin.setIdentityFetcherFactoryForTesting(MojangIdentityFetcher::new);
     }
 
     @Test

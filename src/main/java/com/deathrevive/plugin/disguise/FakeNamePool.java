@@ -43,6 +43,29 @@ public class FakeNamePool {
         this.random = random;
     }
 
+    /**
+     * Adds a freshly fetched identity to the pool so it can be handed out by a later
+     * {@link #assignRandomIdentity()} call. Not thread-safe - callers must invoke this on the
+     * same thread as the rest of the pool's API (the server main thread).
+     */
+    public void offer(FakeIdentity identity) {
+        if (!usedNames.contains(identity.name())) {
+            availableIdentities.add(identity);
+        }
+    }
+
+    /**
+     * @return every name currently known to the pool (used or still available), so a caller
+     *         fetching a replacement identity can avoid suggesting a duplicate.
+     */
+    public Set<String> getKnownNames() {
+        Set<String> known = new LinkedHashSet<>(usedNames);
+        for (FakeIdentity identity : availableIdentities) {
+            known.add(identity.name());
+        }
+        return known;
+    }
+
     public Optional<FakeIdentity> assignRandomIdentity() {
         if (availableIdentities.isEmpty()) {
             return Optional.empty();

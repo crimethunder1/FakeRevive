@@ -3,6 +3,7 @@ package com.deathrevive.plugin.command;
 import com.deathrevive.plugin.disguise.ActiveDisguiseRegistry;
 import com.deathrevive.plugin.disguise.FakeIdentity;
 import com.deathrevive.plugin.disguise.FakeNamePool;
+import com.deathrevive.plugin.disguise.MojangIdentityFetcher;
 import com.deathrevive.plugin.disguise.PlayerDisguiseService;
 import com.deathrevive.plugin.listener.FakeLeaveListener;
 import net.kyori.adventure.text.Component;
@@ -14,25 +15,33 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Optional;
+import java.util.Set;
 import java.util.logging.Logger;
 
 public class ReviveCommand implements CommandExecutor {
 
+    private static final int REPLENISH_MAX_ATTEMPTS = 25;
+
+    private final JavaPlugin plugin;
     private final FakeLeaveListener fakeLeaveListener;
     private final FakeNamePool fakeNamePool;
     private final ActiveDisguiseRegistry activeDisguiseRegistry;
     private final PlayerDisguiseService playerDisguiseService;
+    private final MojangIdentityFetcher identityFetcher;
     private final Logger logger;
 
-    public ReviveCommand(FakeLeaveListener fakeLeaveListener, FakeNamePool fakeNamePool,
+    public ReviveCommand(JavaPlugin plugin, FakeLeaveListener fakeLeaveListener, FakeNamePool fakeNamePool,
                           ActiveDisguiseRegistry activeDisguiseRegistry, PlayerDisguiseService playerDisguiseService,
-                          Logger logger) {
+                          MojangIdentityFetcher identityFetcher, Logger logger) {
+        this.plugin = plugin;
         this.fakeLeaveListener = fakeLeaveListener;
         this.fakeNamePool = fakeNamePool;
         this.activeDisguiseRegistry = activeDisguiseRegistry;
         this.playerDisguiseService = playerDisguiseService;
+        this.identityFetcher = identityFetcher;
         this.logger = logger;
     }
 
@@ -98,9 +107,22 @@ public class ReviveCommand implements CommandExecutor {
         if (identity.isPresent()) {
             activeDisguiseRegistry.assign(player.getUniqueId(), identity.get());
             playerDisguiseService.apply(player, identity.get());
+            replenishPool();
         } else {
             logger.warning("Fake-Namen-Pool ist erschöpft, " + player.getName()
                     + " wird ohne neue Verkleidung wiederbelebt.");
         }
+    }
+
+    /**
+     * Fetches one fresh name+skin identity from the real Mojang API to replace the one just
+     * handed out, keeping the pool topped up over time. Runs off the main thread since it makes
+     * blocking network calls; only the final pool update is hopped back onto the main thread.
+     */
+    private void replenishPool() {
+        Set<String> knownNames = fakeNamePool.getKnownNames();
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () ->
+                identityFetcher.fetchNewIdentity(knownNames, REPLENISH_MAX_ATTEMPTS)
+                        .ifPresent(identity -> Bukkit.getScheduler().runTask(plugin, () -> fakeNamePool.offer(identity))));
     }
 }

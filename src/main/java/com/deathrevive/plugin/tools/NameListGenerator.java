@@ -101,7 +101,7 @@ public final class NameListGenerator {
     };
 
     private static final long GENERATION_SEED = 42L;
-    private static final int TARGET_NAME_COUNT = 5000;
+    private static final int TARGET_NAME_COUNT = 50;
     private static final int TARGET_DONOR_COUNT = TARGET_NAME_COUNT;
     private static final int MAX_CANDIDATE_POOL = 60_000;
     private static final int MAX_NAME_LENGTH = 16;
@@ -315,7 +315,10 @@ public final class NameListGenerator {
 
     private static void fetchAndStoreDonor(
             HttpClient httpClient, String name, String uuid, Map<String, SkinDonor> donors) throws InterruptedException {
-        Optional<HttpResponse<String>> response = getWithRetry(httpClient, SESSION_SERVER_URI_PREFIX + uuid);
+        // unsigned=false is required, otherwise the response omits the "signature" field
+        // entirely and the texture can't be used in a valid GameProfile.
+        Optional<HttpResponse<String>> response =
+                getWithRetry(httpClient, SESSION_SERVER_URI_PREFIX + uuid + "?unsigned=false");
         if (response.isEmpty() || response.get().statusCode() != 200) {
             return;
         }
