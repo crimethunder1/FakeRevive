@@ -2,7 +2,7 @@ name: FakeLeaveAndRevive
 version: ${project.version}
 main: com.deathrevive.plugin.FakeLeaveAndRevivePlugin
 api-version: '1.21'
-depend: [LibsDisguises]
+depend: [packetevents]
 description: Zeigt Todesnachricht + Fake-Leave und bietet /revive <Spieler/@a>.
 commands:
   revive:

@@ -56,8 +56,8 @@ public class FakeLeaveListener implements Listener {
         Bukkit.broadcast(Component.text(displayName + " left the game", NamedTextColor.YELLOW));
 
         if (activeFakeName.isPresent()) {
-            playerDisguiseService.remove(player);
             activeDisguiseRegistry.clear(playerId);
+            playerDisguiseService.remove(player);
         }
 
         fakedOutPlayers.add(playerId);

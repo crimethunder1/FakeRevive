@@ -19,10 +19,6 @@
             <url>https://repo.papermc.io/repository/maven-public/</url>
         </repository>
         <repository>
-            <id>libsdisguises-repo</id>
-            <url>https://mvn.lib.co.nz/public/</url>
-        </repository>
-        <repository>
             <id>codemc-releases</id>
             <url>https://repo.codemc.io/repository/maven-releases/</url>
         </repository>
@@ -33,12 +29,6 @@
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
             <version>1.21.4-R0.1-SNAPSHOT</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>me.libraryaddict.disguises</groupId>
-            <artifactId>libsdisguises</artifactId>
-            <version>11.0.18</version>
             <scope>provided</scope>
         </dependency>
         <dependency>

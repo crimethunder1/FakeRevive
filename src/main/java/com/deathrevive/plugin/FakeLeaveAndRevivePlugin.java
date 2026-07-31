@@ -23,7 +23,8 @@ public class FakeLeaveAndRevivePlugin extends JavaPlugin {
         FakeNamePool fakeNamePool = new FakeNamePool(
                 getResource("names.json"),
                 new File(getDataFolder(), "used-fake-names.yml").toPath());
-        PlayerDisguiseService playerDisguiseService = new PlayerDisguiseService();
+        PlayerDisguiseService playerDisguiseService = new PlayerDisguiseService(activeDisguiseRegistry);
+        playerDisguiseService.registerPacketListener(this);
         MojangIdentityFetcher identityFetcher = identityFetcherFactory.get();
 
         FakeLeaveListener fakeLeaveListener =
@@ -31,7 +32,7 @@ public class FakeLeaveAndRevivePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(fakeLeaveListener, this);
         this.getCommand("revive").setExecutor(new ReviveCommand(this, fakeLeaveListener, fakeNamePool,
                 activeDisguiseRegistry, playerDisguiseService, identityFetcher, getLogger()));
-        getLogger().info("Fake-Leave & Revive (Paper-Native) erfolgreich aktiviert!");
+        getLogger().info("Fake-Leave & Revive (PacketEvents-Native) erfolgreich aktiviert!");
     }
 
     @Override

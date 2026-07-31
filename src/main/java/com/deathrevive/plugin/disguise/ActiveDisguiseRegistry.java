@@ -1,13 +1,13 @@
 package com.deathrevive.plugin.disguise;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ActiveDisguiseRegistry {
 
-    private final Map<UUID, FakeIdentity> activeIdentities = new HashMap<>();
+    private final Map<UUID, FakeIdentity> activeIdentities = new ConcurrentHashMap<>();
 
     public void assign(UUID playerId, FakeIdentity identity) {
         activeIdentities.put(playerId, identity);
