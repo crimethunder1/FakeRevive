@@ -124,8 +124,8 @@ public class ReviveCommand implements CommandExecutor {
         }
 
         if (kitName != null) {
-            player.performCommand("clear");
-            player.performCommand("skit equip " + kitName);
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "clear " + player.getName());
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "skit give " + player.getName() + " " + kitName);
         }
     }
 
