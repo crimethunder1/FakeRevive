@@ -109,6 +109,11 @@ public class ReviveCommand implements CommandExecutor {
         if (identity.isPresent()) {
             activeDisguiseRegistry.assign(player.getUniqueId(), identity.get());
             playerDisguiseService.apply(player, identity.get());
+
+            String fakeName = identity.get().name();
+            player.sendMessage(Component.text("Du wurdest als \"" + fakeName + "\" verkleidet.", NamedTextColor.YELLOW));
+            player.sendActionBar(Component.text("Verkleidet als: " + fakeName, NamedTextColor.YELLOW));
+
             replenishPool();
         } else {
             logger.warning("Fake-Namen-Pool ist erschöpft, " + player.getName()
