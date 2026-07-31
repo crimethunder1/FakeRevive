@@ -9,7 +9,12 @@ commands:
     description: Belebt einen oder alle Spieler aus dem Spectator-Modus wieder.
     permission: fakeleaveandrevive.revive
     permission-message: "§cDu hast keine Rechte für diesen Befehl!"
-    usage: /revive <Spieler/@a>
+    usage: /revive <Spieler/@a> [Kit]
+  undisguise:
+    description: Entfernt die Verkleidung eines Spielers.
+    permission: fakeleaveandrevive.revive
+    permission-message: "§cDu hast keine Rechte für diesen Befehl!"
+    usage: /undisguise [Spieler]
 permissions:
   fakeleaveandrevive.revive:
     description: Erlaubt die Nutzung von /revive.

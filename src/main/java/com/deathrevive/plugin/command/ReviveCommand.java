@@ -16,6 +16,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 import java.util.Set;
@@ -49,10 +50,12 @@ public class ReviveCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (args.length != 1) {
+        if (args.length < 1 || args.length > 2) {
             sender.sendMessage(Component.text("Benutzung: /revive <Spieler> oder /revive @a", NamedTextColor.RED));
             return true;
         }
+
+        String kitName = args.length == 2 ? args[1] : null;
 
         Location spawnLocation;
         if (sender instanceof Player) {
@@ -66,7 +69,7 @@ public class ReviveCommand implements CommandExecutor {
 
             for (Player target : Bukkit.getOnlinePlayers()) {
                 if (fakeLeaveListener.isFakedOut(target.getUniqueId())) {
-                    revivePlayer(target, spawnLocation);
+                    revivePlayer(target, spawnLocation, kitName);
                     revivedCount++;
                 }
             }
@@ -95,12 +98,12 @@ public class ReviveCommand implements CommandExecutor {
             return true;
         }
 
-        revivePlayer(target, spawnLocation);
+        revivePlayer(target, spawnLocation, kitName);
         sender.sendMessage(Component.text("Du hast " + target.getName() + " erfolgreich wiederbelebt!", NamedTextColor.GREEN));
         return true;
     }
 
-    private void revivePlayer(Player player, Location location) {
+    private void revivePlayer(Player player, Location location, @Nullable String kitName) {
         fakeLeaveListener.clearFakedOut(player.getUniqueId());
         player.setGameMode(GameMode.SURVIVAL);
         player.teleport(location);
@@ -118,6 +121,11 @@ public class ReviveCommand implements CommandExecutor {
         } else {
             logger.warning("Fake-Namen-Pool ist erschöpft, " + player.getName()
                     + " wird ohne neue Verkleidung wiederbelebt.");
+        }
+
+        if (kitName != null) {
+            player.performCommand("clear");
+            player.performCommand("skit equip " + kitName);
         }
     }
 

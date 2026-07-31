@@ -1,6 +1,7 @@
 package com.deathrevive.plugin;
 
 import com.deathrevive.plugin.command.ReviveCommand;
+import com.deathrevive.plugin.command.UndisguiseCommand;
 import com.deathrevive.plugin.disguise.ActiveDisguiseRegistry;
 import com.deathrevive.plugin.disguise.FakeNamePool;
 import com.deathrevive.plugin.disguise.MojangIdentityFetcher;
@@ -32,6 +33,8 @@ public class FakeLeaveAndRevivePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(fakeLeaveListener, this);
         this.getCommand("revive").setExecutor(new ReviveCommand(this, fakeLeaveListener, fakeNamePool,
                 activeDisguiseRegistry, playerDisguiseService, identityFetcher, getLogger()));
+        this.getCommand("undisguise").setExecutor(
+                new UndisguiseCommand(activeDisguiseRegistry, playerDisguiseService));
         getLogger().info("Fake-Leave & Revive (PacketEvents-Native) erfolgreich aktiviert!");
     }
 
