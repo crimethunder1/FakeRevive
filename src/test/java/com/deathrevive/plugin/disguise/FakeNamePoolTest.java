@@ -17,7 +17,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FakeNamePoolTest {
 
-    private static final String NAMES_JSON = "[\"Alpha_Wolf\", \"Beta_Falcon\", \"Gamma_Tiger\"]";
+    private static final String NAMES_JSON = "["
+            + "{\"name\": \"Alpha_Wolf\", \"skinValue\": \"v1\", \"skinSignature\": \"s1\"}, "
+            + "{\"name\": \"Beta_Falcon\", \"skinValue\": \"v2\", \"skinSignature\": \"s2\"}, "
+            + "{\"name\": \"Gamma_Tiger\", \"skinValue\": \"v3\", \"skinSignature\": \"s3\"}"
+            + "]";
 
     @Test
     void assignsEveryNameAtMostOnce(@TempDir Path tempDir) {
@@ -25,9 +29,9 @@ class FakeNamePoolTest {
 
         Set<String> assigned = new HashSet<>();
         for (int i = 0; i < 3; i++) {
-            Optional<String> name = pool.assignRandomName();
-            assertTrue(name.isPresent());
-            assertTrue(assigned.add(name.get()), "Name was assigned twice: " + name.get());
+            Optional<FakeIdentity> identity = pool.assignRandomIdentity();
+            assertTrue(identity.isPresent());
+            assertTrue(assigned.add(identity.get().name()), "Name was assigned twice: " + identity.get().name());
         }
     }
 
@@ -36,21 +40,25 @@ class FakeNamePoolTest {
         FakeNamePool pool = new FakeNamePool(namesStream(), tempDir.resolve("used.yml"), new Random(1));
 
         for (int i = 0; i < 3; i++) {
-            pool.assignRandomName();
+            pool.assignRandomIdentity();
         }
 
-        assertEquals(Optional.empty(), pool.assignRandomName());
+        assertEquals(Optional.empty(), pool.assignRandomIdentity());
     }
 
     @Test
     void parsesPrettyPrintedMultilineJsonAsProducedByTheGenerator(@TempDir Path tempDir) {
-        String prettyJson = "[\n  \"Alpha_Wolf\",\n  \"Beta_Falcon\",\n  \"Gamma_Tiger\"\n]\n";
+        String prettyJson = "[\n"
+                + "  {\"name\": \"Alpha_Wolf\", \"skinValue\": \"v1\", \"skinSignature\": \"s1\"},\n"
+                + "  {\"name\": \"Beta_Falcon\", \"skinValue\": \"v2\", \"skinSignature\": \"s2\"},\n"
+                + "  {\"name\": \"Gamma_Tiger\", \"skinValue\": \"v3\", \"skinSignature\": \"s3\"}\n"
+                + "]\n";
         InputStream stream = new ByteArrayInputStream(prettyJson.getBytes(StandardCharsets.UTF_8));
         FakeNamePool pool = new FakeNamePool(stream, tempDir.resolve("used.yml"), new Random(1));
 
         Set<String> assigned = new HashSet<>();
         for (int i = 0; i < 3; i++) {
-            assigned.add(pool.assignRandomName().orElseThrow());
+            assigned.add(pool.assignRandomIdentity().orElseThrow().name());
         }
 
         assertEquals(Set.of("Alpha_Wolf", "Beta_Falcon", "Gamma_Tiger"), assigned);
@@ -61,14 +69,14 @@ class FakeNamePoolTest {
         Path usedNamesFile = tempDir.resolve("used.yml");
 
         FakeNamePool firstRun = new FakeNamePool(namesStream(), usedNamesFile, new Random(1));
-        String firstName = firstRun.assignRandomName().orElseThrow();
+        String firstName = firstRun.assignRandomIdentity().orElseThrow().name();
 
         FakeNamePool secondRun = new FakeNamePool(namesStream(), usedNamesFile, new Random(1));
-        String secondName = secondRun.assignRandomName().orElseThrow();
-        String thirdName = secondRun.assignRandomName().orElseThrow();
+        String secondName = secondRun.assignRandomIdentity().orElseThrow().name();
+        String thirdName = secondRun.assignRandomIdentity().orElseThrow().name();
 
         assertTrue(!secondName.equals(firstName) && !thirdName.equals(firstName));
-        assertEquals(Optional.empty(), secondRun.assignRandomName());
+        assertEquals(Optional.empty(), secondRun.assignRandomIdentity());
     }
 
     private static InputStream namesStream() {

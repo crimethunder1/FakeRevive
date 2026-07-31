@@ -14,7 +14,7 @@ class ActiveDisguiseRegistryTest {
         ActiveDisguiseRegistry registry = new ActiveDisguiseRegistry();
         UUID playerId = UUID.randomUUID();
 
-        registry.assign(playerId, "Crimson_Wolf");
+        registry.assign(playerId, new FakeIdentity("Crimson_Wolf", "skin-value", "skin-signature"));
 
         assertEquals("Crimson_Wolf", registry.getFakeName(playerId).orElseThrow());
     }
@@ -23,7 +23,7 @@ class ActiveDisguiseRegistryTest {
     void clearRemovesTheActiveAssignment() {
         ActiveDisguiseRegistry registry = new ActiveDisguiseRegistry();
         UUID playerId = UUID.randomUUID();
-        registry.assign(playerId, "Crimson_Wolf");
+        registry.assign(playerId, new FakeIdentity("Crimson_Wolf", "skin-value", "skin-signature"));
 
         registry.clear(playerId);
 

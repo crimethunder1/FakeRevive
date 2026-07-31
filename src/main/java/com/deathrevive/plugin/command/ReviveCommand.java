@@ -1,6 +1,7 @@
 package com.deathrevive.plugin.command;
 
 import com.deathrevive.plugin.disguise.ActiveDisguiseRegistry;
+import com.deathrevive.plugin.disguise.FakeIdentity;
 import com.deathrevive.plugin.disguise.FakeNamePool;
 import com.deathrevive.plugin.disguise.PlayerDisguiseService;
 import com.deathrevive.plugin.listener.FakeLeaveListener;
@@ -93,10 +94,10 @@ public class ReviveCommand implements CommandExecutor {
         player.setGameMode(GameMode.SURVIVAL);
         player.teleport(location);
 
-        Optional<String> fakeName = fakeNamePool.assignRandomName();
-        if (fakeName.isPresent()) {
-            activeDisguiseRegistry.assign(player.getUniqueId(), fakeName.get());
-            playerDisguiseService.apply(player, fakeName.get());
+        Optional<FakeIdentity> identity = fakeNamePool.assignRandomIdentity();
+        if (identity.isPresent()) {
+            activeDisguiseRegistry.assign(player.getUniqueId(), identity.get());
+            playerDisguiseService.apply(player, identity.get());
         } else {
             logger.warning("Fake-Namen-Pool ist erschöpft, " + player.getName()
                     + " wird ohne neue Verkleidung wiederbelebt.");

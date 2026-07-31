@@ -23,10 +23,10 @@ public class FakeNamePool {
 
     private static final String USED_NAMES_KEY = "used-names";
     private static final Gson GSON = new Gson();
-    private static final Type NAME_LIST_TYPE = new TypeToken<List<String>>() {
+    private static final Type IDENTITY_LIST_TYPE = new TypeToken<List<FakeIdentity>>() {
     }.getType();
 
-    private final List<String> availableNames;
+    private final List<FakeIdentity> availableIdentities;
     private final Set<String> usedNames;
     private final Path usedNamesFile;
     private final Random random;
@@ -38,31 +38,31 @@ public class FakeNamePool {
     FakeNamePool(InputStream namesResource, Path usedNamesFile, Random random) {
         this.usedNamesFile = usedNamesFile;
         this.usedNames = new LinkedHashSet<>(readUsedNames(usedNamesFile));
-        this.availableNames = readNames(namesResource);
-        this.availableNames.removeAll(this.usedNames);
+        this.availableIdentities = readIdentities(namesResource);
+        this.availableIdentities.removeIf(identity -> usedNames.contains(identity.name()));
         this.random = random;
     }
 
-    public Optional<String> assignRandomName() {
-        if (availableNames.isEmpty()) {
+    public Optional<FakeIdentity> assignRandomIdentity() {
+        if (availableIdentities.isEmpty()) {
             return Optional.empty();
         }
 
-        int index = random.nextInt(availableNames.size());
-        int lastIndex = availableNames.size() - 1;
-        String name = availableNames.get(index);
-        availableNames.set(index, availableNames.get(lastIndex));
-        availableNames.remove(lastIndex);
+        int index = random.nextInt(availableIdentities.size());
+        int lastIndex = availableIdentities.size() - 1;
+        FakeIdentity identity = availableIdentities.get(index);
+        availableIdentities.set(index, availableIdentities.get(lastIndex));
+        availableIdentities.remove(lastIndex);
 
-        usedNames.add(name);
+        usedNames.add(identity.name());
         persistUsedNames();
-        return Optional.of(name);
+        return Optional.of(identity);
     }
 
-    private static List<String> readNames(InputStream namesResource) {
+    private static List<FakeIdentity> readIdentities(InputStream namesResource) {
         try (InputStreamReader reader = new InputStreamReader(namesResource, StandardCharsets.UTF_8)) {
-            List<String> names = GSON.fromJson(reader, NAME_LIST_TYPE);
-            return names != null ? new ArrayList<>(names) : new ArrayList<>();
+            List<FakeIdentity> identities = GSON.fromJson(reader, IDENTITY_LIST_TYPE);
+            return identities != null ? new ArrayList<>(identities) : new ArrayList<>();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }

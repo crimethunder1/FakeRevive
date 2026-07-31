@@ -7,17 +7,21 @@ import java.util.UUID;
 
 public class ActiveDisguiseRegistry {
 
-    private final Map<UUID, String> activeFakeNames = new HashMap<>();
+    private final Map<UUID, FakeIdentity> activeIdentities = new HashMap<>();
 
-    public void assign(UUID playerId, String fakeName) {
-        activeFakeNames.put(playerId, fakeName);
+    public void assign(UUID playerId, FakeIdentity identity) {
+        activeIdentities.put(playerId, identity);
+    }
+
+    public Optional<FakeIdentity> getIdentity(UUID playerId) {
+        return Optional.ofNullable(activeIdentities.get(playerId));
     }
 
     public Optional<String> getFakeName(UUID playerId) {
-        return Optional.ofNullable(activeFakeNames.get(playerId));
+        return getIdentity(playerId).map(FakeIdentity::name);
     }
 
     public void clear(UUID playerId) {
-        activeFakeNames.remove(playerId);
+        activeIdentities.remove(playerId);
     }
 }

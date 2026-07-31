@@ -94,8 +94,8 @@ public class FakeLeaveListener implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        activeDisguiseRegistry.getFakeName(player.getUniqueId())
-                .ifPresent(fakeName -> playerDisguiseService.apply(player, fakeName));
+        activeDisguiseRegistry.getIdentity(player.getUniqueId())
+                .ifPresent(identity -> playerDisguiseService.apply(player, identity));
     }
 
     public boolean isFakedOut(UUID playerId) {

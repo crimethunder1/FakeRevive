@@ -1,6 +1,7 @@
 package com.deathrevive.plugin.listener;
 
 import com.deathrevive.plugin.FakeLeaveAndRevivePlugin;
+import com.deathrevive.plugin.disguise.FakeIdentity;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -70,22 +71,17 @@ class FakeLeaveListenerTest {
     }
 
     @Test
-    void usesFakeNameInsteadOfRealNameInBroadcastAfterRevive() {
-        PlayerMock admin = server.addPlayer("Admin");
-        admin.setOp(true);
+    void usesFakeNameInsteadOfRealNameInBroadcastWhileDisguiseIsActive() {
         PlayerMock target = server.addPlayer("Target");
         PlayerMock bystander = server.addPlayer("Bystander");
-
-        target.damage(target.getHealth() + 1);
-        server.dispatchCommand(admin, "revive Target");
-
-        String fakeName = plugin.getActiveDisguiseRegistry().getFakeName(target.getUniqueId()).orElseThrow();
+        plugin.getActiveDisguiseRegistry().assign(target.getUniqueId(),
+                new FakeIdentity("Crimson_Wolf", "skin-value", "skin-signature"));
         drainMessages(bystander);
 
         target.damage(target.getHealth() + 1);
 
         assertEquals(
-                Component.text(fakeName + " left the game", NamedTextColor.YELLOW),
+                Component.text("Crimson_Wolf left the game", NamedTextColor.YELLOW),
                 bystander.nextComponentMessage());
         assertTrue(plugin.getActiveDisguiseRegistry().getFakeName(target.getUniqueId()).isEmpty());
     }

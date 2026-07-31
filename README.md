@@ -2,7 +2,7 @@
 
 Paper-Plugin für Minecraft 1.21.4+. Wenn ein Spieler stirbt, wird die normale Todesnachricht durch eine gefälschte "hat das Spiel verlassen"-Nachricht ersetzt. Der Spieler landet danach im Spectator-Modus an seiner Todesposition, statt den regulären Respawn-Bildschirm zu sehen. Verlässt er in diesem Zustand tatsächlich den Server, wird auch dafür keine Quit-Nachricht angezeigt.
 
-Mit `/revive` lässt sich ein so "fake-out"-gesetzter Spieler wieder zurück in den Survival-Modus holen. Dabei erhält er bis zu seinem nächsten Tod einen zufälligen Fake-Namen (Chat, Tab-Liste, Nametag) über [LibsDisguises](https://github.com/libraryaddict/LibsDisguises) — siehe "Fake-Namen bei Revive" unten.
+Mit `/revive` lässt sich ein so "fake-out"-gesetzter Spieler wieder zurück in den Survival-Modus holen. Dabei erhält er bis zu seinem nächsten Tod einen zufälligen Fake-Namen samt passendem Skin (Chat, Tab-Liste, Nametag, Aussehen) über [LibsDisguises](https://github.com/libraryaddict/LibsDisguises) — siehe "Fake-Namen bei Revive" unten.
 
 ## Befehl
 
@@ -15,16 +15,16 @@ Belebt entweder einen einzelnen oder alle aktuell fake-out-gesetzten Spieler wie
 
 ## Fake-Namen bei Revive
 
-Beim Revive bekommt der Spieler einen zufälligen, noch nie vergebenen Fake-Namen (Format `Adjektiv_Substantiv`, z. B. `Crimson_Wolf`) zugewiesen und wird darunter für alle anderen Spieler verkleidet. Stirbt er erneut, wird die Verkleidung entfernt und der Fake-Name dauerhaft aus dem Pool entfernt (nie erneute Vergabe). Die Verkleidung übersteht auch ein Verlassen und Wiederbetreten des Servers, solange der Spieler zwischenzeitlich nicht gestorben ist.
+Beim Revive bekommt der Spieler einen zufälligen, noch nie vergebenen Fake-Namen (verschiedene realistisch wirkende Handle-Stile, z. B. `ShadowHunter`, `Crimson_Wolf`, `Wolf123`) samt einem dazu fest zugeordneten Skin zugewiesen und wird darunter für alle anderen Spieler verkleidet. Stirbt er erneut, wird die Verkleidung entfernt und der Fake-Name (inkl. Skin) dauerhaft aus dem Pool entfernt (nie erneute Vergabe). Die Verkleidung übersteht auch ein Verlassen und Wiederbetreten des Servers, solange der Spieler zwischenzeitlich nicht gestorben ist.
 
 **Voraussetzungen auf dem Server:** Neben dieser Plugin-Jar müssen zusätzlich [LibsDisguises](https://www.spigotmc.org/resources/libs-disguises-free.81/) **und** [PacketEvents](https://www.spigotmc.org/resources/packetevents-api.80279/) als eigene Jars im `plugins`-Ordner liegen. PacketEvents ist eine Abhängigkeit von LibsDisguises selbst (nicht von diesem Plugin) und wird daher nicht in `plugin.yml` als `depend` dieses Plugins geführt, muss aber trotzdem installiert sein, sonst startet LibsDisguises nicht.
 
 **Bekannte Einschränkungen:**
 - Der "Klick-Name" (Tab-Completion/Autovervollständigung von Spielernamen, z. B. bei `/msg <Tab>`) bleibt der echte Spielername — das ist eine Einschränkung der Minecraft-Serverarchitektur (Tab-Completion arbeitet mit den tatsächlich angemeldeten Spielernamen) und lässt sich über LibsDisguises nicht vollständig umgehen.
-- Ist der Fake-Namen-Pool erschöpft (alle generierten Namen bereits vergeben), wird trotzdem ganz normal revived, nur ohne neue Verkleidung — dazu erscheint eine Warnung im Server-Log. Bei den mitgelieferten 500 generierten Namen sollte das in der Praxis nicht vorkommen.
+- Ist der Fake-Namen-Pool erschöpft (alle generierten Namen bereits vergeben), wird trotzdem ganz normal revived, nur ohne neue Verkleidung — dazu erscheint eine Warnung im Server-Log. Bei den mitgelieferten 5000 generierten Namen sollte das in der Praxis nicht vorkommen.
 - Das eigentliche Verkleidungsverhalten (Aussehen in Chat/Tab/Nametag) ist nicht automatisiert getestet, da MockBukkit LibsDisguises nicht simuliert — das ist ein manueller Smoke-Test auf einem echten Server (siehe unten).
 
-Der mitgelieferte Namens-Pool (`src/main/resources/names.json`) wurde einmalig mit `com.deathrevive.plugin.tools.NameListGenerator` erzeugt: lokale Adjektiv+Nomen-Kombination, anschließend gegen `api.mojang.com` geprüft, dass keiner der Namen zu einem existierenden Minecraft-Account gehört. Das Tool ist kein Teil der Plugin-Laufzeit und muss nur erneut laufen, wenn der Pool erweitert werden soll.
+Der mitgelieferte Namens-Pool (`src/main/resources/names.json`) wurde mit `com.deathrevive.plugin.tools.NameListGenerator` erzeugt: verschiedene realistisch wirkende Handle-Stile (CamelCase- und Unterstrich-Kombinationen, Wort+Zahl, Präfix-/Suffix-Handles wie `TheDragon` oder `WolfYT` usw.), anschließend jeweils gegen `api.mojang.com` geprüft, dass keiner der Namen zu einem existierenden Minecraft-Account gehört. Jeder so verifizierte Fake-Name wird zusätzlich mit dem Skin eines echten, bereits vergebenen Accounts ("Skin-Donor") gepaart: Sobald der Generator beim Prüfen auf einen bereits vergebenen Namen stößt, holt er sich dessen aktuellen Skin (signierte Textur) über den Mojang-Session-Server und hinterlegt ihn fest zusammen mit dem Fake-Namen. Der angezeigte Name gehört also nie zum selben Account wie der angezeigte Skin. Jeder Eintrag in `names.json` hat die Form `{"name": "...", "skinValue": "...", "skinSignature": "..."}`; die Skin-Textur wird beim `/revive` direkt aus der Datei übernommen, ein Netzwerkzugriff ist zur Laufzeit nicht nötig. Das Tool ist kein Teil der Plugin-Laufzeit und muss nur erneut laufen, wenn der Pool erweitert werden soll.
 
 ## Build
 
