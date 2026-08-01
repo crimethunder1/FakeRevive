@@ -1,49 +1,114 @@
 # FakeLeaveAndRevive
 
-Paper-Plugin für Minecraft 1.21.4+. Wenn ein Spieler stirbt, wird die normale Todesnachricht durch eine gefälschte "hat das Spiel verlassen"-Nachricht ersetzt. Der Spieler landet danach im Spectator-Modus an seiner Todesposition, statt den regulären Respawn-Bildschirm zu sehen. Verlässt er in diesem Zustand tatsächlich den Server, wird auch dafür keine Quit-Nachricht angezeigt.
+A Paper plugin for Minecraft 1.21.4+. When a player dies, the normal death
+message is replaced with a fake "left the game" message and the player is
+put into spectator mode at their death location instead of seeing the
+regular respawn screen. If they actually leave the server in this state, no
+quit message is shown either.
 
-Mit `/revive` lässt sich ein so "fake-out"-gesetzter Spieler wieder zurück in den Survival-Modus holen. Dabei erhält er bis zu seinem nächsten Tod einen zufälligen Fake-Namen samt passendem Skin (Chat, Tab-Liste, Nametag, Aussehen) über [LibsDisguises](https://github.com/libraryaddict/LibsDisguises) — siehe "Fake-Namen bei Revive" unten.
+An admin can later bring a "faked-out" player back with `/revive`, at which
+point they can also be re-equipped with a saved kit. On revive, the player
+is disguised under a random fake name and skin — visible to everyone else
+in chat, tab list, and nametag — until their next death.
 
-## Befehl
+## Features
 
+- Replaces death messages with a fake "left the game" message
+- Puts dead players into spectator mode at their death position instead of respawning
+- Suppresses the quit message if the player disconnects while faked-out
+- `/revive` brings a player back to survival, optionally applying a saved kit
+- Automatic disguise on revive: random fake name + matching skin, visible to all other players
+- Disguise persists across reconnects until the next death
+- Built-in kit system (save/list/apply inventories)
+- Multi-language support (German, English, French)
+
+## Requirements
+
+- Paper 1.21.4 or newer
+- [PacketEvents](https://www.spigotmc.org/resources/packetevents-api.80279/) installed as a separate plugin in the `plugins` folder (this is the only dependency; disguises are implemented entirely through PacketEvents packet interception)
+- Persistent internet access to `api.mojang.com` and `sessionserver.mojang.com` (used to keep the fake-identity pool topped up, see below)
+
+## Installation
+
+1. Download or build `fake-leave-and-revive-<version>.jar` (see "Building from source" below).
+2. Install [PacketEvents](https://www.spigotmc.org/resources/packetevents-api.80279/) in your server's `plugins` folder.
+3. Copy the plugin jar into `plugins` as well and (re)start the server.
+4. Adjust `plugins/FakeLeaveAndRevive/config.yml` if needed (see "Configuration").
+
+## Commands
+
+All commands require the `fakeleaveandrevive.revive` permission (default: `op`).
+
+| Command | Description |
+|---|---|
+| `/revive <player\|@a> [kit]` | Revives one faked-out player, or all of them with `@a`. If a kit name is given, the player's inventory is cleared and replaced with that kit. |
+| `/undisguise [player]` | Removes the disguise from the given player, or from yourself if no player is specified. |
+| `/kit save <name>` | Saves the current inventory (items, armor, offhand) as a server kit. |
+| `/kit list` | Lists all saved kits. |
+
+## Configuration
+
+`plugins/FakeLeaveAndRevive/config.yml`:
+
+```yaml
+language: de
 ```
-/revive <Spieler>
-/revive @a
-```
 
-Belebt entweder einen einzelnen oder alle aktuell fake-out-gesetzten Spieler wieder. Erfordert die Permission `fakeleaveandrevive.revive`.
+Supported values: `de` (German), `en` (English), `fr` (French).
 
-## Fake-Namen bei Revive
+## Kit System
 
-Beim Revive bekommt der Spieler einen zufälligen, noch nie vergebenen Fake-Namen (verschiedene realistisch wirkende Handle-Stile, z. B. `ShadowHunter`, `Crimson_Wolf`, `Wolf123`) samt einem dazu fest zugeordneten Skin zugewiesen und wird darunter für alle anderen Spieler verkleidet. Stirbt er erneut, wird die Verkleidung entfernt und der Fake-Name (inkl. Skin) dauerhaft aus dem Pool entfernt (nie erneute Vergabe). Die Verkleidung übersteht auch ein Verlassen und Wiederbetreten des Servers, solange der Spieler zwischenzeitlich nicht gestorben ist.
+Kits are stored in `plugins/FakeLeaveAndRevive/kits.yml`. A kit fully
+captures the inventory, armor slots, and offhand item at the time it was
+saved with `/kit save <name>`, and restores all of them into the correct
+slots when applied via `/revive <player> <kit>`.
 
-**Voraussetzungen auf dem Server:** Neben dieser Plugin-Jar müssen zusätzlich [LibsDisguises](https://www.spigotmc.org/resources/libs-disguises-free.81/) **und** [PacketEvents](https://www.spigotmc.org/resources/packetevents-api.80279/) als eigene Jars im `plugins`-Ordner liegen. PacketEvents ist eine Abhängigkeit von LibsDisguises selbst (nicht von diesem Plugin) und wird daher nicht in `plugin.yml` als `depend` dieses Plugins geführt, muss aber trotzdem installiert sein, sonst startet LibsDisguises nicht.
+## How disguises work
 
-**Bekannte Einschränkungen:**
-- Der "Klick-Name" (Tab-Completion/Autovervollständigung von Spielernamen, z. B. bei `/msg <Tab>`) bleibt der echte Spielername — das ist eine Einschränkung der Minecraft-Serverarchitektur (Tab-Completion arbeitet mit den tatsächlich angemeldeten Spielernamen) und lässt sich über LibsDisguises nicht vollständig umgehen.
-- Ist der Fake-Namen-Pool im Moment eines Revives leer (z. B. direkt nach dem Serverstart bei sehr vielen Revives kurz hintereinander), wird trotzdem ganz normal revived, nur ohne neue Verkleidung — dazu erscheint eine Warnung im Server-Log. Der Pool füllt sich danach live wieder auf (siehe unten), sodass das nur ein kurzzeitiger Zustand ist.
-- Das eigentliche Verkleidungsverhalten (Aussehen in Chat/Tab/Nametag) ist nicht automatisiert getestet, da MockBukkit LibsDisguises nicht simuliert — das ist ein manueller Smoke-Test auf einem echten Server (siehe unten).
+When a player is revived, they are assigned a random fake name together
+with a fixed, matching skin from a pool of pre-generated identities and
+appear under that identity to everyone else — in the tab list, nametag,
+and skin. The disguised player themselves gets a chat and action bar
+notice showing their assigned fake name. The disguise survives
+reconnects and stays active until the player's next death, at which
+point it is removed.
 
-Der mitgelieferte Namens-Pool (`src/main/resources/names.json`, aktuell ca. 200 Einträge) wurde mit `com.deathrevive.plugin.tools.NameListGenerator` erzeugt: verschiedene realistisch wirkende Handle-Stile (CamelCase- und Unterstrich-Kombinationen, Wort+Zahl, Präfix-/Suffix-Handles wie `TheDragon` oder `WolfYT` usw.), anschließend jeweils gegen `api.mojang.com` geprüft, dass keiner der Namen zu einem existierenden Minecraft-Account gehört. Jeder so verifizierte Fake-Name wird zusätzlich mit dem Skin eines echten, bereits vergebenen Accounts ("Skin-Donor") gepaart: Sobald der Generator beim Prüfen auf einen bereits vergebenen Namen stößt, holt er sich dessen aktuellen Skin (signierte Textur) über den Mojang-Session-Server und hinterlegt ihn fest zusammen mit dem Fake-Namen. Der angezeigte Name gehört also nie zum selben Account wie der angezeigte Skin. Jeder Eintrag in `names.json` hat die Form `{"name": "...", "skinValue": "...", "skinSignature": "..."}`. Das Tool ist kein Teil der Plugin-Laufzeit und muss nur erneut laufen, wenn der mitgelieferte Startpool von Grund auf neu befüllt werden soll.
+The name/skin pairs come from a bundled pool (~200 entries) of names
+verified not to belong to any existing Minecraft account, each paired
+with the skin of an unrelated, real donor account. After every revive,
+the plugin asynchronously fetches a fresh replacement identity from the
+Mojang API in the background to keep the pool from running low; this
+requires the server to have ongoing internet access to Mojang's APIs.
 
-**Live-Nachschub während des Betriebs:** Der mitgelieferte Pool ist bewusst klein (~200 statt tausender Einträge), da das Massen-Generieren im Voraus sehr stark von Mojangs Rate-Limiting ausgebremst wird. Stattdessen holt sich das Plugin selbst automatisch Nachschub: Jedes Mal, wenn `/revive` einen Namen+Skin aus dem Pool zieht, wird direkt danach im Hintergrund (`MojangIdentityFetcher`, asynchron, blockiert den Hauptthread nicht) ein neuer, frisch verifizierter Ersatz von der echten Mojang-API geholt und dem Pool hinzugefügt — der Pool bleibt so über die Zeit ungefähr konstant groß. Das bedeutet: der Server braucht dauerhaften Internetzugriff auf `api.mojang.com`/`sessionserver.mojang.com`, und einzelne Nachschub-Versuche können bei Mojang-Rate-Limiting fehlschlagen (dann bleibt der Pool einfach etwas kleiner, bis der nächste Revive es erneut versucht) — das eigentliche `/revive` selbst wartet darauf nicht und bleibt sofort nutzbar. Neu geholte Identitäten werden nur im Arbeitsspeicher gehalten und nicht in `names.json` zurückgeschrieben, gehen also bei einem Server-Neustart wieder verloren (der Pool startet dann wieder bei den ~200 mitgelieferten Einträgen).
+**Known limitations:**
+- A disguised player's own client always renders their real skin in
+  third-person view — this is a Minecraft client limitation and cannot
+  be worked around without a client-side mod.
+- Tab-completion (e.g. `/msg <Tab>`) still shows the player's real
+  username, since it operates on actual connected player names rather
+  than the visual disguise.
 
-## Build
+## Building from source
 
-Voraussetzungen: JDK 21, Maven.
+Requirements: JDK 21, Maven.
 
 ```
 mvn package
 ```
 
-Das fertige Plugin liegt danach unter `target/fake-leave-and-revive-<version>.jar` und kann in den `plugins`-Ordner eines Paper-Servers (1.21.4+) kopiert werden.
+The built plugin will be at `target/fake-leave-and-revive-<version>.jar`,
+ready to be copied into a Paper server's `plugins` folder.
 
-Unter JDK 25 kann der Build (auch `mvn test`) mit `Cannot load from object array because "this.hashes" is null` fehlschlagen (javac-Bug, unabhängig vom Plugin-Code). Workaround: `-Dmaven.compiler.fork=true` anhängen, z.B. `mvn package -Dmaven.compiler.fork=true`.
+Under JDK 25, the build (including `mvn test`) may fail with
+`Cannot load from object array because "this.hashes" is null` — this is a
+javac bug unrelated to the plugin code. Workaround: append
+`-Dmaven.compiler.fork=true`, e.g. `mvn package -Dmaven.compiler.fork=true`.
 
-## Tests
+### Tests
 
 ```
 mvn test
 ```
 
-Die Tests nutzen [MockBukkit](https://github.com/MockBukkit/MockBukkit) zum Simulieren von Server, Spielern und Events.
+Tests use [MockBukkit](https://github.com/MockBukkit/MockBukkit) to
+simulate the server, players, and events.
