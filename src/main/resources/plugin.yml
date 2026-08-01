@@ -15,6 +15,11 @@ commands:
     permission: fakeleaveandrevive.revive
     permission-message: "§cDu hast keine Rechte für diesen Befehl!"
     usage: /undisguise [Spieler]
+  kit:
+    description: Verwaltet Server-Kits.
+    permission: fakeleaveandrevive.revive
+    permission-message: "§cDu hast keine Rechte für diesen Befehl!"
+    usage: /kit save <Name> | /kit list
 permissions:
   fakeleaveandrevive.revive:
     description: Erlaubt die Nutzung von /revive.

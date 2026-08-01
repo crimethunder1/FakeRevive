@@ -5,6 +5,7 @@ import com.deathrevive.plugin.disguise.FakeIdentity;
 import com.deathrevive.plugin.disguise.FakeNamePool;
 import com.deathrevive.plugin.disguise.MojangIdentityFetcher;
 import com.deathrevive.plugin.disguise.PlayerDisguiseService;
+import com.deathrevive.plugin.kit.KitManager;
 import com.deathrevive.plugin.listener.FakeLeaveListener;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -16,7 +17,6 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.PlayerInventory;
-import org.bukkit.permissions.PermissionAttachment;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
 
@@ -35,18 +35,20 @@ public class ReviveCommand implements CommandExecutor {
     private final ActiveDisguiseRegistry activeDisguiseRegistry;
     private final PlayerDisguiseService playerDisguiseService;
     private final MojangIdentityFetcher identityFetcher;
+    private final KitManager kitManager;
     private final Logger logger;
     private final AtomicBoolean replenishInProgress = new AtomicBoolean(false);
 
     public ReviveCommand(JavaPlugin plugin, FakeLeaveListener fakeLeaveListener, FakeNamePool fakeNamePool,
                           ActiveDisguiseRegistry activeDisguiseRegistry, PlayerDisguiseService playerDisguiseService,
-                          MojangIdentityFetcher identityFetcher, Logger logger) {
+                          MojangIdentityFetcher identityFetcher, KitManager kitManager, Logger logger) {
         this.plugin = plugin;
         this.fakeLeaveListener = fakeLeaveListener;
         this.fakeNamePool = fakeNamePool;
         this.activeDisguiseRegistry = activeDisguiseRegistry;
         this.playerDisguiseService = playerDisguiseService;
         this.identityFetcher = identityFetcher;
+        this.kitManager = kitManager;
         this.logger = logger;
     }
 
@@ -131,12 +133,7 @@ public class ReviveCommand implements CommandExecutor {
             inventory.setArmorContents(null);
             inventory.setItemInOffHand(null);
             player.updateInventory();
-
-            PermissionAttachment attachment = player.addAttachment(plugin);
-            attachment.setPermission("serverkits.admin", true);
-            attachment.setPermission("serverkits.cooldown.bypass", true);
-            player.performCommand("skit equip " + kitName);
-            attachment.remove();
+            kitManager.equipKit(kitName, player);
         }
     }
 
