@@ -75,6 +75,8 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
                 return handleRevive(sender, rest);
             case "undisguise":
                 return handleUndisguise(sender, rest);
+            case "disguise":
+                return handleDisguise(sender, rest);
             case "kit":
                 return handleKit(sender, rest);
             case "reload":
@@ -94,12 +96,13 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 1) {
-            return filterByPrefix(List.of("revive", "undisguise", "kit", "reload", "help"), args[0]);
+            return filterByPrefix(List.of("revive", "undisguise", "disguise", "kit", "reload", "help"), args[0]);
         }
 
         return switch (args[0].toLowerCase()) {
             case "revive" -> completeRevive(args);
             case "undisguise" -> completeUndisguise(args);
+            case "disguise" -> completeDisguise(args);
             case "kit" -> completeKit(args);
             default -> List.of();
         };
@@ -121,6 +124,16 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
     private List<String> completeUndisguise(String[] args) {
         if (args.length == 2) {
             return onlinePlayerNames(args[1]);
+        }
+        return List.of();
+    }
+
+    private List<String> completeDisguise(String[] args) {
+        if (args.length == 2) {
+            return onlinePlayerNames(args[1]);
+        }
+        if (args.length == 3) {
+            return filterByPrefix(new ArrayList<>(kitManager.getKitNames()), args[2]);
         }
         return List.of();
     }
@@ -246,6 +259,60 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
                     NamedTextColor.GREEN));
         }
 
+        return true;
+    }
+
+    private boolean handleDisguise(CommandSender sender, String[] args) {
+        if (args.length < 1 || args.length > 2) {
+            sender.sendMessage(Component.text(messageService.get("commands.disguise.usage"), NamedTextColor.RED));
+            return true;
+        }
+
+        Player target = Bukkit.getPlayer(args[0]);
+        if (target == null) {
+            sender.sendMessage(Component.text(messageService.get("commands.disguise.not-found"), NamedTextColor.RED));
+            return true;
+        }
+
+        String kitName = args.length == 2 ? args[1] : null;
+
+        activeDisguiseRegistry.clear(target.getUniqueId());
+
+        Optional<FakeIdentity> identity = fakeNamePool.assignRandomIdentity();
+        if (identity.isEmpty()) {
+            sender.sendMessage(Component.text(messageService.get("commands.disguise.pool-exhausted"), NamedTextColor.RED));
+            return true;
+        }
+
+        FakeIdentity fakeIdentity = identity.get();
+        activeDisguiseRegistry.assign(target.getUniqueId(), fakeIdentity);
+        playerDisguiseService.apply(target, fakeIdentity);
+
+        String fakeName = fakeIdentity.name();
+        target.sendMessage(Component.text(
+                messageService.get("disguise.applied", "name", fakeName), NamedTextColor.YELLOW));
+        target.sendActionBar(Component.text(
+                messageService.get("disguise.applied-actionbar", "name", fakeName), NamedTextColor.YELLOW));
+
+        if (!sender.equals(target)) {
+            sender.sendMessage(Component.text(
+                    messageService.get("commands.disguise.success", "player", target.getName(), "name", fakeName),
+                    NamedTextColor.GREEN));
+        }
+
+        if (kitName != null) {
+            PlayerInventory inventory = target.getInventory();
+            inventory.clear();
+            inventory.setArmorContents(null);
+            inventory.setItemInOffHand(null);
+            target.updateInventory();
+            if (!kitManager.equipKit(kitName, target)) {
+                logger.warning("Kit \"" + kitName + "\" not found — player " + target.getName()
+                        + " disguised without a kit.");
+            }
+        }
+
+        replenishPool();
         return true;
     }
 
@@ -394,6 +461,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Component.text(messageService.get("commands.help.header"), NamedTextColor.GOLD));
         sender.sendMessage(Component.text(messageService.get("commands.help.revive"), NamedTextColor.YELLOW));
         sender.sendMessage(Component.text(messageService.get("commands.help.undisguise"), NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text(messageService.get("commands.help.disguise"), NamedTextColor.YELLOW));
         sender.sendMessage(Component.text(messageService.get("commands.help.kit-save"), NamedTextColor.YELLOW));
         sender.sendMessage(Component.text(messageService.get("commands.help.kit-list"), NamedTextColor.YELLOW));
         sender.sendMessage(Component.text(messageService.get("commands.help.kit-give"), NamedTextColor.YELLOW));

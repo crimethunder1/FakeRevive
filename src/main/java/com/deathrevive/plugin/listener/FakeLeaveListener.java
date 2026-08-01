@@ -9,6 +9,7 @@ import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -83,6 +84,12 @@ public class FakeLeaveListener implements Listener {
         String displayName = activeFakeName.orElseGet(player::getName);
         Bukkit.broadcast(Component.text(
                 messageService.get("events.death.fake-leave", "name", displayName), NamedTextColor.YELLOW));
+
+        for (Player nearby : player.getWorld().getPlayers()) {
+            if (nearby.getLocation().distanceSquared(deathLocation) <= 48 * 48) {
+                nearby.playSound(deathLocation, Sound.ENTITY_PLAYER_DEATH, 0.8f, 1.0f);
+            }
+        }
 
         if (activeFakeName.isPresent()) {
             activeDisguiseRegistry.clear(playerId);

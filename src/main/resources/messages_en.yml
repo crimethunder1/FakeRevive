@@ -1,6 +1,6 @@
 commands:
   fr:
-    usage: "Usage: /fr <revive|undisguise|kit|reload>"
+    usage: "Usage: /fr <revive|undisguise|disguise|kit|reload|help>"
   revive:
     usage: "Usage: /fr revive <player/@a> [kit]"
     not-found: "Player not found."
@@ -14,6 +14,11 @@ commands:
     not-disguised: "This player is not disguised."
     success-self: "Your disguise has been removed."
     success-other: "You removed {player}'s disguise."
+  disguise:
+    usage: "Usage: /fr disguise <player> [kit]"
+    not-found: "Player not found."
+    pool-exhausted: "The fake name pool is exhausted."
+    success: "{player} has been disguised as \"{name}\"."
   kit:
     usage: "Usage: /fr kit <save|list|give|equip>"
     players-only: "Only players can save kits."
@@ -35,6 +40,7 @@ commands:
     header: "——— FakeRevive Help ———"
     revive: "/fr revive <player/@a> [kit] — Revive a player"
     undisguise: "/fr undisguise [player] — Remove a player's disguise"
+    disguise: "/fr disguise <player> [kit] — Manually disguise a player"
     kit-save: "/fr kit save <name> — Save inventory as a kit"
     kit-list: "/fr kit list — List all kits"
     kit-give: "/fr kit give <kit> <player> — Give a kit to a player"
