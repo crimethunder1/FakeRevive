@@ -87,13 +87,14 @@ public class FakeLeaveListener implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         UUID playerId = event.getPlayer().getUniqueId();
 
+        if (fakedOutPlayers.contains(playerId)) {
+            event.quitMessage(null);
+        }
+
         BukkitTask pendingRespawnTask = pendingRespawnTasks.remove(playerId);
         if (pendingRespawnTask != null) {
             pendingRespawnTask.cancel();
-        }
-
-        if (fakedOutPlayers.contains(playerId)) {
-            event.quitMessage(null);
+            fakedOutPlayers.remove(playerId);
         }
     }
 

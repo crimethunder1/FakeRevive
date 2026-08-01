@@ -40,7 +40,7 @@ public class KitManager {
         try {
             kitsConfig.load(kitsFile);
         } catch (IOException | InvalidConfigurationException e) {
-            plugin.getLogger().warning("Konnte kits.yml nicht laden: " + e.getMessage());
+            plugin.getLogger().warning("Failed to load kits.yml: " + e.getMessage());
             return;
         }
 
@@ -110,7 +110,7 @@ public class KitManager {
             plugin.getDataFolder().mkdirs();
             kitsConfig.save(kitsFile);
         } catch (IOException e) {
-            plugin.getLogger().warning("Konnte kits.yml nicht speichern: " + e.getMessage());
+            plugin.getLogger().warning("Failed to save kits.yml: " + e.getMessage());
         }
     }
 

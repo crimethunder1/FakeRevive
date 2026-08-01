@@ -20,12 +20,13 @@ public class FakeLeaveAndRevivePlugin extends JavaPlugin {
     private static Supplier<MojangIdentityFetcher> identityFetcherFactory = MojangIdentityFetcher::new;
 
     private ActiveDisguiseRegistry activeDisguiseRegistry;
+    private MessageService messageService;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
         String language = getConfig().getString("language", "en");
-        MessageService messageService = new MessageService(this, language);
+        this.messageService = new MessageService(this, language);
 
         activeDisguiseRegistry = new ActiveDisguiseRegistry();
         FakeNamePool fakeNamePool = new FakeNamePool(
@@ -51,7 +52,7 @@ public class FakeLeaveAndRevivePlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        getLogger().info("Fake-Leave & Revive Plugin deactivated.");
+        getLogger().info(messageService.get("plugin.disable"));
     }
 
     public ActiveDisguiseRegistry getActiveDisguiseRegistry() {

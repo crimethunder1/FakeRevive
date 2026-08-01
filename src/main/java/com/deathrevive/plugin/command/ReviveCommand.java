@@ -141,7 +141,10 @@ public class ReviveCommand implements CommandExecutor {
             inventory.setArmorContents(null);
             inventory.setItemInOffHand(null);
             player.updateInventory();
-            kitManager.equipKit(kitName, player);
+            if (!kitManager.equipKit(kitName, player)) {
+                logger.warning("Kit \"" + kitName + "\" not found — player " + player.getName()
+                        + " was revived without a kit.");
+            }
         }
     }
 

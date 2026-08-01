@@ -147,11 +147,11 @@ public class MojangIdentityFetcher {
                 if (response.statusCode() != 429) {
                     return Optional.of(response);
                 }
-            } catch (IOException | InterruptedException e) {
-                if (e instanceof InterruptedException) {
-                    Thread.currentThread().interrupt();
-                    return Optional.empty();
-                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return Optional.empty();
+            } catch (IOException e) {
+                // fällt durch zu sleepQuietly und nächstem Versuch
             }
             sleepQuietly(RETRY_DELAY);
         }
