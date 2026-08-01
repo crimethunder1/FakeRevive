@@ -15,6 +15,8 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.permissions.PermissionAttachment;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
 
@@ -124,8 +126,17 @@ public class ReviveCommand implements CommandExecutor {
         }
 
         if (kitName != null) {
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "clear " + player.getName());
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "skit give " + player.getName() + " " + kitName);
+            PlayerInventory inventory = player.getInventory();
+            inventory.clear();
+            inventory.setArmorContents(null);
+            inventory.setItemInOffHand(null);
+            player.updateInventory();
+
+            PermissionAttachment attachment = player.addAttachment(plugin);
+            attachment.setPermission("serverkits.admin", true);
+            attachment.setPermission("serverkits.cooldown.bypass", true);
+            player.performCommand("skit equip " + kitName);
+            attachment.remove();
         }
     }
 
