@@ -1,26 +1,17 @@
-name: FakeLeaveAndRevive
+name: FakeRevive
 version: ${project.version}
-main: com.deathrevive.plugin.FakeLeaveAndRevivePlugin
+main: com.deathrevive.plugin.FakeRevivePlugin
 api-version: '1.21'
 depend: [packetevents]
-description: Zeigt Todesnachricht + Fake-Leave und bietet /revive <Spieler/@a>.
+description: On death, fakes a leave message and disguises players on revive.
 commands:
-  revive:
-    description: Belebt einen oder alle Spieler aus dem Spectator-Modus wieder.
-    permission: fakeleaveandrevive.revive
-    permission-message: "§cDu hast keine Rechte für diesen Befehl!"
-    usage: /revive <Spieler/@a> [Kit]
-  undisguise:
-    description: Entfernt die Verkleidung eines Spielers.
-    permission: fakeleaveandrevive.revive
-    permission-message: "§cDu hast keine Rechte für diesen Befehl!"
-    usage: /undisguise [Spieler]
-  kit:
-    description: Verwaltet Server-Kits.
-    permission: fakeleaveandrevive.revive
-    permission-message: "§cDu hast keine Rechte für diesen Befehl!"
-    usage: /kit save <Name> | /kit list | /kit give <Kit> <Spieler> | /kit equip <Kit> [Spieler]
+  fr:
+    description: Main command for FakeRevive.
+    permission: fakerevive.admin
+    permission-message: "§cYou don't have permission to use this command."
+    usage: /fr <revive|undisguise|kit|reload>
+    aliases: [fakerevive]
 permissions:
-  fakeleaveandrevive.revive:
-    description: Erlaubt die Nutzung von /revive.
+  fakerevive.admin:
+    description: Grants access to all /fr subcommands.
     default: op

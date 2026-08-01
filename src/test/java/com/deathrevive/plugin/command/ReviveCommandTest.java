@@ -1,6 +1,6 @@
 package com.deathrevive.plugin.command;
 
-import com.deathrevive.plugin.FakeLeaveAndRevivePlugin;
+import com.deathrevive.plugin.FakeRevivePlugin;
 import com.deathrevive.plugin.disguise.FakeIdentity;
 import com.deathrevive.plugin.disguise.MojangIdentityFetcher;
 import net.kyori.adventure.text.Component;
@@ -28,14 +28,14 @@ class ReviveCommandTest {
     void setUp() {
         // MockBukkit executes runTaskAsynchronously immediately on a real thread, so without
         // this stub every revive in these tests would hit the live Mojang API for replenishment.
-        FakeLeaveAndRevivePlugin.setIdentityFetcherFactoryForTesting(() -> new MojangIdentityFetcher() {
+        FakeRevivePlugin.setIdentityFetcherFactoryForTesting(() -> new MojangIdentityFetcher() {
             @Override
             public Optional<FakeIdentity> fetchNewIdentity(Set<String> excludedNames, int maxAttempts) {
                 return Optional.empty();
             }
         });
         server = MockBukkit.mock();
-        MockBukkit.load(FakeLeaveAndRevivePlugin.class);
+        MockBukkit.load(FakeRevivePlugin.class);
         op = server.addPlayer("Admin");
         op.setOp(true);
     }
@@ -43,34 +43,34 @@ class ReviveCommandTest {
     @AfterEach
     void tearDown() {
         MockBukkit.unmock();
-        FakeLeaveAndRevivePlugin.setIdentityFetcherFactoryForTesting(MojangIdentityFetcher::new);
+        FakeRevivePlugin.setIdentityFetcherFactoryForTesting(MojangIdentityFetcher::new);
     }
 
     @Test
     void deniesCommandForSenderWithoutPermission() {
         PlayerMock guest = server.addPlayer("Guest");
 
-        boolean handled = server.dispatchCommand(guest, "revive Target");
+        boolean handled = server.dispatchCommand(guest, "fr revive Target");
 
         assertTrue(handled);
         assertEquals(
-                Component.text("Du hast keine Rechte für diesen Befehl!", NamedTextColor.RED),
+                Component.text("You don't have permission to use this command.", NamedTextColor.RED),
                 guest.nextComponentMessage());
     }
 
     @Test
     void deniesUsageWithoutExactlyOneArgument() {
-        boolean handled = server.dispatchCommand(op, "revive");
+        boolean handled = server.dispatchCommand(op, "fr revive");
 
         assertTrue(handled);
         assertEquals(
-                Component.text("Benutzung: /revive <Spieler/@a> [Kit]", NamedTextColor.RED),
+                Component.text("Benutzung: /fr revive <Spieler/@a> [Kit]", NamedTextColor.RED),
                 op.nextComponentMessage());
     }
 
     @Test
     void deniesReviveForUnknownPlayer() {
-        server.dispatchCommand(op, "revive Ghost");
+        server.dispatchCommand(op, "fr revive Ghost");
 
         assertEquals(
                 Component.text("Dieser Spieler wurde nicht gefunden.", NamedTextColor.RED),
@@ -81,7 +81,7 @@ class ReviveCommandTest {
     void deniesReviveForPlayerNotFakedOut() {
         PlayerMock target = server.addPlayer("Target");
 
-        server.dispatchCommand(op, "revive Target");
+        server.dispatchCommand(op, "fr revive Target");
 
         assertEquals(
                 Component.text("Dieser Spieler ist nicht im Spectator-Modus!", NamedTextColor.RED),
@@ -94,14 +94,14 @@ class ReviveCommandTest {
         target.damage(target.getHealth() + 1);
         drainMessages(op);
 
-        server.dispatchCommand(op, "revive Target");
+        server.dispatchCommand(op, "fr revive Target");
 
         assertEquals(GameMode.SURVIVAL, target.getGameMode());
         assertEquals(
                 Component.text("Du hast Target erfolgreich wiederbelebt!", NamedTextColor.GREEN),
                 op.nextComponentMessage());
 
-        server.dispatchCommand(op, "revive Target");
+        server.dispatchCommand(op, "fr revive Target");
 
         assertEquals(
                 Component.text("Dieser Spieler ist nicht im Spectator-Modus!", NamedTextColor.RED),
@@ -117,7 +117,7 @@ class ReviveCommandTest {
         secondVictim.damage(secondVictim.getHealth() + 1);
         drainMessages(op);
 
-        server.dispatchCommand(op, "revive @a");
+        server.dispatchCommand(op, "fr revive @a");
 
         assertEquals(GameMode.SURVIVAL, firstVictim.getGameMode());
         assertEquals(GameMode.SURVIVAL, secondVictim.getGameMode());
@@ -131,7 +131,7 @@ class ReviveCommandTest {
     void respondsWhenNoFakedOutPlayersExistForWildcard() {
         server.addPlayer("Bystander");
 
-        server.dispatchCommand(op, "revive @a");
+        server.dispatchCommand(op, "fr revive @a");
 
         assertEquals(
                 Component.text(

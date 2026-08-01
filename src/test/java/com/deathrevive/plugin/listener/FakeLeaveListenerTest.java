@@ -1,6 +1,6 @@
 package com.deathrevive.plugin.listener;
 
-import com.deathrevive.plugin.FakeLeaveAndRevivePlugin;
+import com.deathrevive.plugin.FakeRevivePlugin;
 import com.deathrevive.plugin.disguise.FakeIdentity;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -24,12 +24,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class FakeLeaveListenerTest {
 
     private ServerMock server;
-    private FakeLeaveAndRevivePlugin plugin;
+    private FakeRevivePlugin plugin;
 
     @BeforeEach
     void setUp() {
         server = MockBukkit.mock();
-        plugin = MockBukkit.load(FakeLeaveAndRevivePlugin.class);
+        plugin = MockBukkit.load(FakeRevivePlugin.class);
     }
 
     @AfterEach

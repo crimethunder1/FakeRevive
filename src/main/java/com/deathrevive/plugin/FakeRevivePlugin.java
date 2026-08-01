@@ -1,8 +1,6 @@
 package com.deathrevive.plugin;
 
-import com.deathrevive.plugin.command.KitCommand;
-import com.deathrevive.plugin.command.ReviveCommand;
-import com.deathrevive.plugin.command.UndisguiseCommand;
+import com.deathrevive.plugin.command.FakeReviveCommand;
 import com.deathrevive.plugin.disguise.ActiveDisguiseRegistry;
 import com.deathrevive.plugin.disguise.FakeNamePool;
 import com.deathrevive.plugin.disguise.MojangIdentityFetcher;
@@ -15,7 +13,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.io.File;
 import java.util.function.Supplier;
 
-public class FakeLeaveAndRevivePlugin extends JavaPlugin {
+public class FakeRevivePlugin extends JavaPlugin {
 
     private static Supplier<MojangIdentityFetcher> identityFetcherFactory = MojangIdentityFetcher::new;
 
@@ -41,12 +39,9 @@ public class FakeLeaveAndRevivePlugin extends JavaPlugin {
         FakeLeaveListener fakeLeaveListener =
                 new FakeLeaveListener(this, activeDisguiseRegistry, playerDisguiseService, messageService);
         getServer().getPluginManager().registerEvents(fakeLeaveListener, this);
-        this.getCommand("revive").setExecutor(new ReviveCommand(this, fakeLeaveListener, fakeNamePool,
+        this.getCommand("fr").setExecutor(new FakeReviveCommand(this, fakeLeaveListener, fakeNamePool,
                 activeDisguiseRegistry, playerDisguiseService, identityFetcher, kitManager, getLogger(),
                 messageService));
-        this.getCommand("undisguise").setExecutor(
-                new UndisguiseCommand(activeDisguiseRegistry, playerDisguiseService, messageService));
-        this.getCommand("kit").setExecutor(new KitCommand(kitManager, messageService, this));
         getLogger().info(messageService.get("plugin.enable"));
     }
 

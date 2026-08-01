@@ -1,32 +1,36 @@
 commands:
+  fr:
+    usage: "Usage: /fr <revive|undisguise|kit|reload>"
   revive:
-    usage: "Usage: /revive <player/@a> [kit]"
+    usage: "Usage: /fr revive <player/@a> [kit]"
     not-found: "Player not found."
     not-in-spectator: "This player is not in spectator mode!"
     no-targets: "No players in spectator mode to revive."
     success-single: "Successfully revived {player}!"
     success-multiple: "Successfully revived {count} players!"
   undisguise:
-    usage: "Usage: /undisguise [player]"
+    usage: "Usage: /fr undisguise [player]"
     not-found: "Player not found."
     not-disguised: "This player is not disguised."
     success-self: "Your disguise has been removed."
     success-other: "You removed {player}'s disguise."
   kit:
-    usage: "Usage: /kit save <name> | /kit list | /kit give <kit> <player> | /kit equip <kit> [player]"
+    usage: "Usage: /fr kit <save|list|give|equip>"
     players-only: "Only players can save kits."
     saved: "Kit \"{name}\" saved."
     list-empty: "No kits available."
     list-format: "Available kits: {kits}"
-    give-usage: "Usage: /kit give <kit> <player>"
+    give-usage: "Usage: /fr kit give <kit> <player>"
     give-kit-not-found: "Kit \"{name}\" not found."
     give-player-not-found: "Player \"{player}\" not found."
     give-success: "Kit \"{name}\" given to {player}."
-    equip-usage: "Usage: /kit equip <kit> [player]"
+    equip-usage: "Usage: /fr kit equip <kit> [player]"
     equip-kit-not-found: "Kit \"{name}\" not found."
     equip-player-not-found: "Player \"{player}\" not found."
     equip-success: "Kit \"{name}\" equipped."
     equip-success-other: "Kit \"{name}\" equipped for {player}."
+  reload:
+    success: "Config and kits reloaded."
 disguise:
   applied: "You have been disguised as \"{name}\"."
   applied-actionbar: "Disguised as: {name}"
@@ -35,6 +39,6 @@ events:
     fake-leave: "{name} left the game"
   pool-exhausted: "Name pool exhausted — {player} revived without disguise."
 plugin:
-  enable: "Fake-Leave & Revive successfully enabled!"
-  disable: "Fake-Leave & Revive disabled."
+  enable: "FakeRevive successfully enabled!"
+  disable: "FakeRevive disabled."
   packetevents-missing: "PacketEvents not available — disguises will not work."

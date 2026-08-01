@@ -14,15 +14,15 @@ import java.nio.charset.StandardCharsets;
  */
 public class MessageService {
 
-    private final YamlConfiguration messages;
+    private YamlConfiguration messages;
 
     public MessageService(JavaPlugin plugin, String language) {
-        InputStream stream = plugin.getResource("messages_" + language + ".yml");
-        if (stream == null) {
-            stream = plugin.getResource("messages_en.yml");
-        }
+        loadLanguage(plugin, language);
+    }
 
-        this.messages = YamlConfiguration.loadConfiguration(new InputStreamReader(stream, StandardCharsets.UTF_8));
+    /** Reloads messages for the language currently set in the plugin config. Called on {@code /fr reload}. */
+    public void reload(JavaPlugin plugin) {
+        loadLanguage(plugin, plugin.getConfig().getString("language", "en"));
     }
 
     /** @return the message for the given dot-separated key, or the key itself if not found. */
@@ -43,5 +43,14 @@ public class MessageService {
             message = message.replace("{" + placeholders[i] + "}", placeholders[i + 1]);
         }
         return message;
+    }
+
+    private void loadLanguage(JavaPlugin plugin, String language) {
+        InputStream stream = plugin.getResource("messages_" + language + ".yml");
+        if (stream == null) {
+            stream = plugin.getResource("messages_en.yml");
+        }
+
+        this.messages = YamlConfiguration.loadConfiguration(new InputStreamReader(stream, StandardCharsets.UTF_8));
     }
 }

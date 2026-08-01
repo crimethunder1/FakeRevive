@@ -1,32 +1,36 @@
 commands:
+  fr:
+    usage: "Benutzung: /fr <revive|undisguise|kit|reload>"
   revive:
-    usage: "Benutzung: /revive <Spieler/@a> [Kit]"
+    usage: "Benutzung: /fr revive <Spieler/@a> [Kit]"
     not-found: "Dieser Spieler wurde nicht gefunden."
     not-in-spectator: "Dieser Spieler ist nicht im Spectator-Modus!"
     no-targets: "Es gab keine Spieler im Spectator-Modus, die wiederbelebt werden konnten."
     success-single: "Du hast {player} erfolgreich wiederbelebt!"
     success-multiple: "Es wurden erfolgreich {count} Spieler wiederbelebt!"
   undisguise:
-    usage: "Benutzung: /undisguise [Spieler]"
+    usage: "Benutzung: /fr undisguise [Spieler]"
     not-found: "Dieser Spieler wurde nicht gefunden."
     not-disguised: "Dieser Spieler ist nicht verkleidet."
     success-self: "Deine Verkleidung wurde entfernt."
     success-other: "Du hast {player} die Verkleidung entfernt."
   kit:
-    usage: "Benutzung: /kit save <Name> | /kit list | /kit give <Kit> <Spieler> | /kit equip <Kit> [Spieler]"
+    usage: "Benutzung: /fr kit <save|list|give|equip>"
     players-only: "Nur Spieler können Kits speichern."
     saved: "Kit \"{name}\" wurde gespeichert."
     list-empty: "Keine Kits vorhanden."
     list-format: "Verfügbare Kits: {kits}"
-    give-usage: "Benutzung: /kit give <Kit> <Spieler>"
+    give-usage: "Benutzung: /fr kit give <Kit> <Spieler>"
     give-kit-not-found: "Kit \"{name}\" wurde nicht gefunden."
     give-player-not-found: "Spieler \"{player}\" wurde nicht gefunden."
     give-success: "Kit \"{name}\" wurde an {player} gegeben."
-    equip-usage: "Benutzung: /kit equip <Kit> [Spieler]"
+    equip-usage: "Benutzung: /fr kit equip <Kit> [Spieler]"
     equip-kit-not-found: "Kit \"{name}\" wurde nicht gefunden."
     equip-player-not-found: "Spieler \"{player}\" wurde nicht gefunden."
     equip-success: "Kit \"{name}\" wurde ausgerüstet."
     equip-success-other: "Kit \"{name}\" wurde an {player} ausgerüstet."
+  reload:
+    success: "Config und Kits wurden neu geladen."
 disguise:
   applied: "Du wurdest als \"{name}\" verkleidet."
   applied-actionbar: "Verkleidet als: {name}"
@@ -35,6 +39,6 @@ events:
     fake-leave: "{name} left the game"
   pool-exhausted: "Fake-Namen-Pool erschöpft — {player} wird ohne Verkleidung wiederbelebt."
 plugin:
-  enable: "Fake-Leave & Revive erfolgreich aktiviert!"
-  disable: "Fake-Leave & Revive deaktiviert."
+  enable: "FakeRevive erfolgreich aktiviert!"
+  disable: "FakeRevive deaktiviert."
   packetevents-missing: "PacketEvents ist nicht verfügbar — Verkleidungen werden nicht funktionieren."

@@ -1,32 +1,36 @@
 commands:
+  fr:
+    usage: "Utilisation : /fr <revive|undisguise|kit|reload>"
   revive:
-    usage: "Utilisation : /revive <joueur/@a> [kit]"
+    usage: "Utilisation : /fr revive <joueur/@a> [kit]"
     not-found: "Joueur introuvable."
     not-in-spectator: "Ce joueur n'est pas en mode spectateur !"
     no-targets: "Aucun joueur en mode spectateur à réanimer."
     success-single: "{player} a été réanimé avec succès !"
     success-multiple: "{count} joueurs ont été réanimés avec succès !"
   undisguise:
-    usage: "Utilisation : /undisguise [joueur]"
+    usage: "Utilisation : /fr undisguise [joueur]"
     not-found: "Joueur introuvable."
     not-disguised: "Ce joueur n'est pas déguisé."
     success-self: "Votre déguisement a été retiré."
     success-other: "Vous avez retiré le déguisement de {player}."
   kit:
-    usage: "Utilisation : /kit save <nom> | /kit list | /kit give <kit> <joueur> | /kit equip <kit> [joueur]"
+    usage: "Utilisation : /fr kit <save|list|give|equip>"
     players-only: "Seuls les joueurs peuvent sauvegarder des kits."
     saved: "Kit \"{name}\" sauvegardé."
     list-empty: "Aucun kit disponible."
     list-format: "Kits disponibles : {kits}"
-    give-usage: "Utilisation : /kit give <kit> <joueur>"
+    give-usage: "Utilisation : /fr kit give <kit> <joueur>"
     give-kit-not-found: "Kit \"{name}\" introuvable."
     give-player-not-found: "Joueur \"{player}\" introuvable."
     give-success: "Kit \"{name}\" donné à {player}."
-    equip-usage: "Utilisation : /kit equip <kit> [joueur]"
+    equip-usage: "Utilisation : /fr kit equip <kit> [joueur]"
     equip-kit-not-found: "Kit \"{name}\" introuvable."
     equip-player-not-found: "Joueur \"{player}\" introuvable."
     equip-success: "Kit \"{name}\" équipé."
     equip-success-other: "Kit \"{name}\" équipé pour {player}."
+  reload:
+    success: "Config et kits rechargés."
 disguise:
   applied: "Vous avez été déguisé en \"{name}\"."
   applied-actionbar: "Déguisé en : {name}"
@@ -35,6 +39,6 @@ events:
     fake-leave: "{name} a quitté la partie"
   pool-exhausted: "Pool de noms épuisé — {player} réanimé sans déguisement."
 plugin:
-  enable: "Fake-Leave & Revive activé avec succès !"
-  disable: "Fake-Leave & Revive désactivé."
+  enable: "FakeRevive activé avec succès !"
+  disable: "FakeRevive désactivé."
   packetevents-missing: "PacketEvents non disponible — les déguisements ne fonctionneront pas."

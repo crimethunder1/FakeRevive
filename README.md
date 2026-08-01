@@ -1,4 +1,4 @@
-# FakeLeaveAndRevive
+# FakeRevive
 
 A Paper plugin for Minecraft 1.21.4+. When a player dies, the normal death
 message is replaced with a fake "left the game" message and the player is
@@ -6,20 +6,21 @@ put into spectator mode at their death location instead of seeing the
 regular respawn screen. If they actually leave the server in this state, no
 quit message is shown either.
 
-An admin can later bring a "faked-out" player back with `/revive`, at which
-point they can also be re-equipped with a saved kit. On revive, the player
-is disguised under a random fake name and skin — visible to everyone else
-in chat, tab list, and nametag — until their next death.
+An admin can later bring a "faked-out" player back with `/fr revive`, at
+which point they can also be re-equipped with a saved kit. On revive, the
+player is disguised under a random fake name and skin — visible to everyone
+else in chat, tab list, and nametag — until their next death.
 
 ## Features
 
 - Replaces death messages with a fake "left the game" message
 - Puts dead players into spectator mode at their death position instead of respawning
 - Suppresses the quit message if the player disconnects while faked-out
-- `/revive` brings a player back to survival, optionally applying a saved kit
+- `/fr revive` brings a player back to survival, optionally applying a saved kit
 - Automatic disguise on revive: random fake name + matching skin, visible to all other players
 - Disguise persists across reconnects until the next death
-- Built-in kit system (save/list/apply inventories)
+- Built-in kit system (save/list/give/equip inventories)
+- `/fr reload` reloads config, messages, and kits without restarting the server
 - Multi-language support (German, English, French)
 
 ## Requirements
@@ -30,25 +31,29 @@ in chat, tab list, and nametag — until their next death.
 
 ## Installation
 
-1. Download or build `fake-leave-and-revive-<version>.jar` (see "Building from source" below).
+1. Download or build `fakerevive-<version>.jar` (see "Building from source" below).
 2. Install [PacketEvents](https://www.spigotmc.org/resources/packetevents-api.80279/) in your server's `plugins` folder.
 3. Copy the plugin jar into `plugins` as well and (re)start the server.
-4. Adjust `plugins/FakeLeaveAndRevive/config.yml` if needed (see "Configuration").
+4. Adjust `plugins/FakeRevive/config.yml` if needed (see "Configuration").
 
 ## Commands
 
-All commands require the `fakeleaveandrevive.revive` permission (default: `op`).
+All commands are subcommands of `/fr` (alias `/fakerevive`) and require the
+`fakerevive.admin` permission (default: `op`).
 
 | Command | Description |
 |---|---|
-| `/revive <player\|@a> [kit]` | Revives one faked-out player, or all of them with `@a`. If a kit name is given, the player's inventory is cleared and replaced with that kit. |
-| `/undisguise [player]` | Removes the disguise from the given player, or from yourself if no player is specified. |
-| `/kit save <name>` | Saves the current inventory (items, armor, offhand) as a server kit. |
-| `/kit list` | Lists all saved kits. |
+| `/fr revive <player\|@a> [kit]` | Revives one faked-out player, or all of them with `@a`. If a kit name is given, the player's inventory is cleared and replaced with that kit. |
+| `/fr undisguise [player]` | Removes the disguise from the given player, or from yourself if no player is specified. |
+| `/fr kit save <name>` | Saves the current inventory (items, armor, offhand) as a server kit. |
+| `/fr kit list` | Lists all saved kits. |
+| `/fr kit give <kit> <player>` | Gives a copy of the kit's items to a player's inventory. |
+| `/fr kit equip <kit> [player]` | Replaces a player's inventory (or your own) with a saved kit. |
+| `/fr reload` | Reloads `config.yml`, the message files, and all kits. |
 
 ## Configuration
 
-`plugins/FakeLeaveAndRevive/config.yml`:
+`plugins/FakeRevive/config.yml`:
 
 ```yaml
 language: de
@@ -58,10 +63,10 @@ Supported values: `de` (German), `en` (English), `fr` (French).
 
 ## Kit System
 
-Kits are stored in `plugins/FakeLeaveAndRevive/kits.yml`. A kit fully
-captures the inventory, armor slots, and offhand item at the time it was
-saved with `/kit save <name>`, and restores all of them into the correct
-slots when applied via `/revive <player> <kit>`.
+Kits are stored in `plugins/FakeRevive/kits.yml`. A kit fully captures the
+inventory, armor slots, and offhand item at the time it was saved with
+`/fr kit save <name>`, and restores all of them into the correct slots when
+applied via `/fr revive <player> <kit>`, `/fr kit give`, or `/fr kit equip`.
 
 ## How disguises work
 
@@ -96,8 +101,8 @@ Requirements: JDK 21, Maven.
 mvn package
 ```
 
-The built plugin will be at `target/fake-leave-and-revive-<version>.jar`,
-ready to be copied into a Paper server's `plugins` folder.
+The built plugin will be at `target/fakerevive-<version>.jar`, ready to be
+copied into a Paper server's `plugins` folder.
 
 Under JDK 25, the build (including `mvn test`) may fail with
 `Cannot load from object array because "this.hashes" is null` — this is a
