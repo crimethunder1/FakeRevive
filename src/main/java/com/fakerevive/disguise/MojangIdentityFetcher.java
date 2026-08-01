@@ -1,4 +1,4 @@
-package com.deathrevive.plugin.disguise;
+package com.fakerevive.disguise;
 
 import java.io.IOException;
 import java.net.URI;
@@ -151,7 +151,7 @@ public class MojangIdentityFetcher {
                 Thread.currentThread().interrupt();
                 return Optional.empty();
             } catch (IOException e) {
-                // fällt durch zu sleepQuietly und nächstem Versuch
+                // falls through to sleepQuietly and the next attempt
             }
             sleepQuietly(RETRY_DELAY);
         }

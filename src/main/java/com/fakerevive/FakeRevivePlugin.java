@@ -1,18 +1,22 @@
-package com.deathrevive.plugin;
+package com.fakerevive;
 
-import com.deathrevive.plugin.command.FakeReviveCommand;
-import com.deathrevive.plugin.disguise.ActiveDisguiseRegistry;
-import com.deathrevive.plugin.disguise.FakeNamePool;
-import com.deathrevive.plugin.disguise.MojangIdentityFetcher;
-import com.deathrevive.plugin.disguise.PlayerDisguiseService;
-import com.deathrevive.plugin.kit.KitManager;
-import com.deathrevive.plugin.listener.FakeLeaveListener;
-import com.deathrevive.plugin.message.MessageService;
+import com.fakerevive.command.FakeReviveCommand;
+import com.fakerevive.disguise.ActiveDisguiseRegistry;
+import com.fakerevive.disguise.FakeNamePool;
+import com.fakerevive.disguise.MojangIdentityFetcher;
+import com.fakerevive.disguise.PlayerDisguiseService;
+import com.fakerevive.kit.KitManager;
+import com.fakerevive.listener.FakeLeaveListener;
+import com.fakerevive.message.MessageService;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.util.function.Supplier;
 
+/**
+ * Main plugin class for FakeRevive. Wires all components together on enable
+ * and registers the single {@code /fr} command with its executor and tab completer.
+ */
 public class FakeRevivePlugin extends JavaPlugin {
 
     private static Supplier<MojangIdentityFetcher> identityFetcherFactory = MojangIdentityFetcher::new;

@@ -1,4 +1,4 @@
-package com.deathrevive.plugin.disguise;
+package com.fakerevive.disguise;
 
 /**
  * A fake identity assigned to a player after being revived — an unclaimed Minecraft

@@ -1,6 +1,6 @@
 name: FakeRevive
 version: ${project.version}
-main: com.deathrevive.plugin.FakeRevivePlugin
+main: com.fakerevive.FakeRevivePlugin
 api-version: '1.21'
 depend: [packetevents]
 description: On death, fakes a leave message and disguises players on revive.

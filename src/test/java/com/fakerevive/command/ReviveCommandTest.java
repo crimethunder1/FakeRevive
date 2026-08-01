@@ -1,8 +1,8 @@
-package com.deathrevive.plugin.command;
+package com.fakerevive.command;
 
-import com.deathrevive.plugin.FakeRevivePlugin;
-import com.deathrevive.plugin.disguise.FakeIdentity;
-import com.deathrevive.plugin.disguise.MojangIdentityFetcher;
+import com.fakerevive.FakeRevivePlugin;
+import com.fakerevive.disguise.FakeIdentity;
+import com.fakerevive.disguise.MojangIdentityFetcher;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.GameMode;

@@ -1,13 +1,13 @@
-package com.deathrevive.plugin.command;
+package com.fakerevive.command;
 
-import com.deathrevive.plugin.disguise.ActiveDisguiseRegistry;
-import com.deathrevive.plugin.disguise.FakeIdentity;
-import com.deathrevive.plugin.disguise.FakeNamePool;
-import com.deathrevive.plugin.disguise.MojangIdentityFetcher;
-import com.deathrevive.plugin.disguise.PlayerDisguiseService;
-import com.deathrevive.plugin.kit.KitManager;
-import com.deathrevive.plugin.listener.FakeLeaveListener;
-import com.deathrevive.plugin.message.MessageService;
+import com.fakerevive.disguise.ActiveDisguiseRegistry;
+import com.fakerevive.disguise.FakeIdentity;
+import com.fakerevive.disguise.FakeNamePool;
+import com.fakerevive.disguise.MojangIdentityFetcher;
+import com.fakerevive.disguise.PlayerDisguiseService;
+import com.fakerevive.kit.KitManager;
+import com.fakerevive.listener.FakeLeaveListener;
+import com.fakerevive.message.MessageService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -31,6 +31,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+/**
+ * Handles all {@code /fr} subcommands: revive, undisguise, disguise, kit (save/list/give/equip),
+ * reload, and help. Also provides context-aware tab completion for all subcommands.
+ */
 public class FakeReviveCommand implements CommandExecutor, TabCompleter {
 
     private static final int REPLENISH_MAX_ATTEMPTS = 25;

@@ -1,4 +1,4 @@
-package com.deathrevive.plugin.message;
+package com.fakerevive.message;
 
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;

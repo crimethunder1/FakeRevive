@@ -1,4 +1,4 @@
-package com.deathrevive.plugin.kit;
+package com.fakerevive.kit;
 
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;

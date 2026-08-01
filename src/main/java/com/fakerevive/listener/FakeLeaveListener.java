@@ -1,4 +1,4 @@
-package com.deathrevive.plugin.listener;
+package com.fakerevive.listener;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -21,9 +21,9 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
-import com.deathrevive.plugin.disguise.ActiveDisguiseRegistry;
-import com.deathrevive.plugin.disguise.PlayerDisguiseService;
-import com.deathrevive.plugin.message.MessageService;
+import com.fakerevive.disguise.ActiveDisguiseRegistry;
+import com.fakerevive.disguise.PlayerDisguiseService;
+import com.fakerevive.message.MessageService;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -33,7 +33,7 @@ import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
  * Handles death, quit, and join events to implement the fake-leave mechanic. On death the
  * real death message is suppressed and replaced with a configurable "{name} left the game"
  * broadcast; the player is held in spectator at their death location until revived via
- * {@link com.deathrevive.plugin.command.ReviveCommand}.
+ * {@link com.fakerevive.command.FakeReviveCommand}.
  */
 public class FakeLeaveListener implements Listener {
 
@@ -115,8 +115,8 @@ public class FakeLeaveListener implements Listener {
         pendingRespawnTasks.put(playerId, respawnTask);
     }
 
-    // HIGHEST stellt sicher dass wir die Quit-Message als letztes nullen,
-    // nachdem andere Plugins sie ggf. gesetzt haben.
+    // HIGHEST ensures we null the quit message last, after other plugins
+    // may have set it.
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerQuit(PlayerQuitEvent event) {
         UUID playerId = event.getPlayer().getUniqueId();
@@ -146,7 +146,7 @@ public class FakeLeaveListener implements Listener {
 
     /**
      * Removes the player from fake-out state. Called by
-     * {@link com.deathrevive.plugin.command.ReviveCommand} on successful revive.
+     * {@link com.fakerevive.command.FakeReviveCommand} on successful revive.
      */
     public void clearFakedOut(UUID playerId) {
         fakedOutPlayers.remove(playerId);

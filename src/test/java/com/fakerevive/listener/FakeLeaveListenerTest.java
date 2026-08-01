@@ -1,7 +1,7 @@
-package com.deathrevive.plugin.listener;
+package com.fakerevive.listener;
 
-import com.deathrevive.plugin.FakeRevivePlugin;
-import com.deathrevive.plugin.disguise.FakeIdentity;
+import com.fakerevive.FakeRevivePlugin;
+import com.fakerevive.disguise.FakeIdentity;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;

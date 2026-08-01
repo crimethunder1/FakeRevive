@@ -1,4 +1,4 @@
-package com.deathrevive.plugin.disguise;
+package com.fakerevive.disguise;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;

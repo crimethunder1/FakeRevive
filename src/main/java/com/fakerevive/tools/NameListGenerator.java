@@ -1,4 +1,4 @@
-package com.deathrevive.plugin.tools;
+package com.fakerevive.tools;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -34,8 +34,8 @@ import java.util.regex.Pattern;
  * to names.json.
  *
  * Run manually, e.g.:
- *   javac -d out src/main/java/com/deathrevive/plugin/tools/NameListGenerator.java
- *   java -cp out com.deathrevive.plugin.tools.NameListGenerator src/main/resources/names.json
+ *   javac -d out src/main/java/com/fakerevive/tools/NameListGenerator.java
+ *   java -cp out com.fakerevive.tools.NameListGenerator src/main/resources/names.json
  */
 public final class NameListGenerator {
 

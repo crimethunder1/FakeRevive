@@ -1,4 +1,4 @@
-package com.deathrevive.plugin.disguise;
+package com.fakerevive.disguise;
 
 import java.util.Map;
 import java.util.Optional;
