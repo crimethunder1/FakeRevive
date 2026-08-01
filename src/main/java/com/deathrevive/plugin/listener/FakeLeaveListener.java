@@ -1,11 +1,12 @@
 package com.deathrevive.plugin.listener;
 
-import com.deathrevive.plugin.disguise.ActiveDisguiseRegistry;
-import com.deathrevive.plugin.disguise.PlayerDisguiseService;
-import com.deathrevive.plugin.message.MessageService;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -20,12 +21,13 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import com.deathrevive.plugin.disguise.ActiveDisguiseRegistry;
+import com.deathrevive.plugin.disguise.PlayerDisguiseService;
+import com.deathrevive.plugin.message.MessageService;
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 
 /**
  * Handles death, quit, and join events to implement the fake-leave mechanic. On death the
@@ -87,7 +89,7 @@ public class FakeLeaveListener implements Listener {
 
         for (Player nearby : player.getWorld().getPlayers()) {
             if (nearby.getLocation().distanceSquared(deathLocation) <= 48 * 48) {
-                nearby.playSound(deathLocation, Sound.ENTITY_PLAYER_DEATH, 0.8f, 1.0f);
+                nearby.playSound(deathLocation, Sound.ENTITY_WITHER_DEATH, 0.8f, 1.0f);
             }
         }
 
