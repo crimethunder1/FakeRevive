@@ -1,1 +1,8 @@
 language: de
+
+kill-message:
+  enabled: true
+
+kits:
+  clear-before-give: false
+  clear-before-equip: true

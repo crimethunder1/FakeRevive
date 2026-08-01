@@ -81,6 +81,9 @@ class FakeLeaveListenerTest {
         target.damage(target.getHealth() + 1);
 
         assertEquals(
+                Component.text("Crimson_Wolf got killed"),
+                bystander.nextComponentMessage());
+        assertEquals(
                 Component.text("Crimson_Wolf left the game", NamedTextColor.YELLOW),
                 bystander.nextComponentMessage());
         assertTrue(plugin.getActiveDisguiseRegistry().getFakeName(target.getUniqueId()).isEmpty());

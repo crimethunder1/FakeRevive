@@ -19,7 +19,7 @@ commands:
     description: Verwaltet Server-Kits.
     permission: fakeleaveandrevive.revive
     permission-message: "§cDu hast keine Rechte für diesen Befehl!"
-    usage: /kit save <Name> | /kit list
+    usage: /kit save <Name> | /kit list | /kit give <Kit> <Spieler> | /kit equip <Kit> [Spieler]
 permissions:
   fakeleaveandrevive.revive:
     description: Erlaubt die Nutzung von /revive.

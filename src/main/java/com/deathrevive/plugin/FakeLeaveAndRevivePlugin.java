@@ -46,7 +46,7 @@ public class FakeLeaveAndRevivePlugin extends JavaPlugin {
                 messageService));
         this.getCommand("undisguise").setExecutor(
                 new UndisguiseCommand(activeDisguiseRegistry, playerDisguiseService, messageService));
-        this.getCommand("kit").setExecutor(new KitCommand(kitManager, messageService));
+        this.getCommand("kit").setExecutor(new KitCommand(kitManager, messageService, this));
         getLogger().info(messageService.get("plugin.enable"));
     }
 

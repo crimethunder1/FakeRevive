@@ -5,6 +5,7 @@ import com.deathrevive.plugin.disguise.PlayerDisguiseService;
 import com.deathrevive.plugin.message.MessageService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -55,8 +56,26 @@ public class FakeLeaveListener implements Listener {
         UUID playerId = player.getUniqueId();
         Optional<String> activeFakeName = activeDisguiseRegistry.getFakeName(playerId);
         Component originalDeathMessage = event.deathMessage();
+        boolean killMessageEnabled = plugin.getConfig().getBoolean("kill-message.enabled", false);
 
-        if (activeFakeName.isEmpty() && originalDeathMessage != null) {
+        if (originalDeathMessage != null && killMessageEnabled) {
+            String raw = PlainTextComponentSerializer.plainText().serialize(originalDeathMessage);
+
+            String victimFake = activeFakeName.orElse(null);
+            if (victimFake != null) {
+                raw = raw.replace(player.getName(), victimFake);
+            }
+
+            Player killer = player.getKiller();
+            if (killer != null) {
+                String killerFake = activeDisguiseRegistry.getFakeName(killer.getUniqueId()).orElse(null);
+                if (killerFake != null) {
+                    raw = raw.replace(killer.getName(), killerFake);
+                }
+            }
+
+            Bukkit.broadcast(Component.text(raw));
+        } else if (activeFakeName.isEmpty() && originalDeathMessage != null) {
             Bukkit.broadcast(originalDeathMessage);
         }
 

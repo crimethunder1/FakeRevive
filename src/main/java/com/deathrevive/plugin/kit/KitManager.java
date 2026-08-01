@@ -121,6 +121,32 @@ public class KitManager {
         return true;
     }
 
+    /**
+     * Adds the named kit's main inventory contents to the player using addItem(), so items
+     * overflow to the ground if the inventory is full. Armor and offhand are not touched.
+     *
+     * @return {@code true} if the kit was found; {@code false} otherwise.
+     */
+    public boolean giveKit(String name, Player player) {
+        if (!kitNames.contains(name)) {
+            return false;
+        }
+
+        String path = "kits." + name;
+        List<String> serializedInventory = kitsConfig.getStringList(path + ".inventory");
+        List<ItemStack> items = new ArrayList<>();
+        for (String entry : serializedInventory) {
+            ItemStack item = deserialize(entry);
+            if (item != null) {
+                items.add(item);
+            }
+        }
+
+        player.getInventory().addItem(items.toArray(new ItemStack[0]));
+        player.updateInventory();
+        return true;
+    }
+
     /** @return a snapshot of all currently registered kit names; modifications do not affect the registry. */
     public Set<String> getKitNames() {
         return new HashSet<>(kitNames);
