@@ -31,6 +31,16 @@ commands:
     equip-success-other: "Kit \"{name}\" wurde an {player} ausgerüstet."
   reload:
     success: "Config und Kits wurden neu geladen."
+  help:
+    header: "——— FakeRevive Hilfe ———"
+    revive: "/fr revive <Spieler/@a> [Kit] — Spieler wiederbeleben"
+    undisguise: "/fr undisguise [Spieler] — Verkleidung entfernen"
+    kit-save: "/fr kit save <Name> — Inventar als Kit speichern"
+    kit-list: "/fr kit list — Alle Kits anzeigen"
+    kit-give: "/fr kit give <Kit> <Spieler> — Kit an Spieler geben"
+    kit-equip: "/fr kit equip <Kit> [Spieler] — Kit ausrüsten"
+    reload: "/fr reload — Config und Kits neu laden"
+    help: "/fr help — Hilfe anzeigen"
 disguise:
   applied: "Du wurdest als \"{name}\" verkleidet."
   applied-actionbar: "Verkleidet als: {name}"

@@ -39,9 +39,11 @@ public class FakeRevivePlugin extends JavaPlugin {
         FakeLeaveListener fakeLeaveListener =
                 new FakeLeaveListener(this, activeDisguiseRegistry, playerDisguiseService, messageService);
         getServer().getPluginManager().registerEvents(fakeLeaveListener, this);
-        this.getCommand("fr").setExecutor(new FakeReviveCommand(this, fakeLeaveListener, fakeNamePool,
+        FakeReviveCommand fakeReviveCommand = new FakeReviveCommand(this, fakeLeaveListener, fakeNamePool,
                 activeDisguiseRegistry, playerDisguiseService, identityFetcher, kitManager, getLogger(),
-                messageService));
+                messageService);
+        getCommand("fr").setExecutor(fakeReviveCommand);
+        getCommand("fr").setTabCompleter(fakeReviveCommand);
         getLogger().info(messageService.get("plugin.enable"));
     }
 

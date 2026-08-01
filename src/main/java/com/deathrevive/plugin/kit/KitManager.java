@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -122,8 +123,9 @@ public class KitManager {
     }
 
     /**
-     * Adds the named kit's main inventory contents to the player using addItem(), so items
-     * overflow to the ground if the inventory is full. Armor and offhand are not touched.
+     * Adds the named kit's inventory, armor, and offhand contents to the player using
+     * addItem(), so items that don't fit overflow onto the ground at the player's feet
+     * instead of being lost.
      *
      * @return {@code true} if the kit was found; {@code false} otherwise.
      */
@@ -133,16 +135,29 @@ public class KitManager {
         }
 
         String path = "kits." + name;
-        List<String> serializedInventory = kitsConfig.getStringList(path + ".inventory");
         List<ItemStack> items = new ArrayList<>();
-        for (String entry : serializedInventory) {
+
+        for (String entry : kitsConfig.getStringList(path + ".inventory")) {
             ItemStack item = deserialize(entry);
             if (item != null) {
                 items.add(item);
             }
         }
 
-        player.getInventory().addItem(items.toArray(new ItemStack[0]));
+        for (String entry : kitsConfig.getStringList(path + ".armor")) {
+            ItemStack item = deserialize(entry);
+            if (item != null) {
+                items.add(item);
+            }
+        }
+
+        ItemStack offhand = deserialize(kitsConfig.getString(path + ".offhand", ""));
+        if (offhand != null) {
+            items.add(offhand);
+        }
+
+        Map<Integer, ItemStack> overflow = player.getInventory().addItem(items.toArray(new ItemStack[0]));
+        overflow.values().forEach(item -> player.getWorld().dropItemNaturally(player.getLocation(), item));
         player.updateInventory();
         return true;
     }

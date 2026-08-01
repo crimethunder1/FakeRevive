@@ -16,18 +16,22 @@ import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
-public class FakeReviveCommand implements CommandExecutor {
+public class FakeReviveCommand implements CommandExecutor, TabCompleter {
 
     private static final int REPLENISH_MAX_ATTEMPTS = 25;
 
@@ -75,10 +79,84 @@ public class FakeReviveCommand implements CommandExecutor {
                 return handleKit(sender, rest);
             case "reload":
                 return handleReload(sender);
+            case "help":
+                return handleHelp(sender);
             default:
                 sender.sendMessage(Component.text(messageService.get("commands.fr.usage"), NamedTextColor.RED));
                 return true;
         }
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (!sender.hasPermission("fakerevive.admin")) {
+            return List.of();
+        }
+
+        if (args.length == 1) {
+            return filterByPrefix(List.of("revive", "undisguise", "kit", "reload", "help"), args[0]);
+        }
+
+        return switch (args[0].toLowerCase()) {
+            case "revive" -> completeRevive(args);
+            case "undisguise" -> completeUndisguise(args);
+            case "kit" -> completeKit(args);
+            default -> List.of();
+        };
+    }
+
+    private List<String> completeRevive(String[] args) {
+        if (args.length == 2) {
+            List<String> options = new ArrayList<>();
+            options.add("@a");
+            Bukkit.getOnlinePlayers().forEach(p -> options.add(p.getName()));
+            return filterByPrefix(options, args[1]);
+        }
+        if (args.length == 3) {
+            return filterByPrefix(new ArrayList<>(kitManager.getKitNames()), args[2]);
+        }
+        return List.of();
+    }
+
+    private List<String> completeUndisguise(String[] args) {
+        if (args.length == 2) {
+            return onlinePlayerNames(args[1]);
+        }
+        return List.of();
+    }
+
+    private List<String> completeKit(String[] args) {
+        if (args.length == 2) {
+            return filterByPrefix(List.of("save", "list", "give", "equip"), args[1]);
+        }
+        if (args.length >= 3) {
+            return switch (args[1].toLowerCase()) {
+                case "give", "equip" -> {
+                    if (args.length == 3) {
+                        yield filterByPrefix(new ArrayList<>(kitManager.getKitNames()), args[2]);
+                    }
+                    if (args.length == 4) {
+                        yield onlinePlayerNames(args[3]);
+                    }
+                    yield List.of();
+                }
+                default -> List.of();
+            };
+        }
+        return List.of();
+    }
+
+    private List<String> onlinePlayerNames(String prefix) {
+        List<String> names = new ArrayList<>();
+        Bukkit.getOnlinePlayers().forEach(p -> names.add(p.getName()));
+        return filterByPrefix(names, prefix);
+    }
+
+    private List<String> filterByPrefix(List<String> options, String prefix) {
+        String lowerPrefix = prefix.toLowerCase();
+        return options.stream()
+                .filter(option -> option.toLowerCase().startsWith(lowerPrefix))
+                .collect(Collectors.toList());
     }
 
     private boolean handleRevive(CommandSender sender, String[] args) {
@@ -309,6 +387,19 @@ public class FakeReviveCommand implements CommandExecutor {
         kitManager.loadKits();
         sender.sendMessage(Component.text(
                 messageService.get("commands.reload.success"), NamedTextColor.GREEN));
+        return true;
+    }
+
+    private boolean handleHelp(CommandSender sender) {
+        sender.sendMessage(Component.text(messageService.get("commands.help.header"), NamedTextColor.GOLD));
+        sender.sendMessage(Component.text(messageService.get("commands.help.revive"), NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text(messageService.get("commands.help.undisguise"), NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text(messageService.get("commands.help.kit-save"), NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text(messageService.get("commands.help.kit-list"), NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text(messageService.get("commands.help.kit-give"), NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text(messageService.get("commands.help.kit-equip"), NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text(messageService.get("commands.help.reload"), NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text(messageService.get("commands.help.help"), NamedTextColor.YELLOW));
         return true;
     }
 
