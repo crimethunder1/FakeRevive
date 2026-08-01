@@ -1,0 +1,31 @@
+commands:
+  revive:
+    usage: "Utilisation : /revive <joueur/@a> [kit]"
+    not-found: "Joueur introuvable."
+    not-in-spectator: "Ce joueur n'est pas en mode spectateur !"
+    no-targets: "Aucun joueur en mode spectateur à réanimer."
+    success-single: "{player} a été réanimé avec succès !"
+    success-multiple: "{count} joueurs ont été réanimés avec succès !"
+  undisguise:
+    usage: "Utilisation : /undisguise [joueur]"
+    not-found: "Joueur introuvable."
+    not-disguised: "Ce joueur n'est pas déguisé."
+    success-self: "Votre déguisement a été retiré."
+    success-other: "Vous avez retiré le déguisement de {player}."
+  kit:
+    usage: "Utilisation : /kit save <nom> | /kit list"
+    players-only: "Seuls les joueurs peuvent sauvegarder des kits."
+    saved: "Kit \"{name}\" sauvegardé."
+    list-empty: "Aucun kit disponible."
+    list-format: "Kits disponibles : {kits}"
+disguise:
+  applied: "Vous avez été déguisé en \"{name}\"."
+  applied-actionbar: "Déguisé en : {name}"
+events:
+  death:
+    fake-leave: "{name} a quitté la partie"
+  pool-exhausted: "Pool de noms épuisé — {player} réanimé sans déguisement."
+plugin:
+  enable: "Fake-Leave & Revive activé avec succès !"
+  disable: "Fake-Leave & Revive désactivé."
+  packetevents-missing: "PacketEvents non disponible — les déguisements ne fonctionneront pas."

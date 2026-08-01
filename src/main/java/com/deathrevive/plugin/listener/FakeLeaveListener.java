@@ -2,6 +2,7 @@ package com.deathrevive.plugin.listener;
 
 import com.deathrevive.plugin.disguise.ActiveDisguiseRegistry;
 import com.deathrevive.plugin.disguise.PlayerDisguiseService;
+import com.deathrevive.plugin.message.MessageService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -31,12 +32,14 @@ public class FakeLeaveListener implements Listener {
     private final PlayerDisguiseService playerDisguiseService;
     private final Map<UUID, BukkitTask> pendingRespawnTasks = new HashMap<>();
     private final Set<UUID> fakedOutPlayers = new HashSet<>();
+    private final MessageService messageService;
 
     public FakeLeaveListener(JavaPlugin plugin, ActiveDisguiseRegistry activeDisguiseRegistry,
-                              PlayerDisguiseService playerDisguiseService) {
+                              PlayerDisguiseService playerDisguiseService, MessageService messageService) {
         this.plugin = plugin;
         this.activeDisguiseRegistry = activeDisguiseRegistry;
         this.playerDisguiseService = playerDisguiseService;
+        this.messageService = messageService;
     }
 
     @EventHandler
@@ -53,7 +56,8 @@ public class FakeLeaveListener implements Listener {
 
         event.deathMessage(null);
         String displayName = activeFakeName.orElseGet(player::getName);
-        Bukkit.broadcast(Component.text(displayName + " left the game", NamedTextColor.YELLOW));
+        Bukkit.broadcast(Component.text(
+                messageService.get("events.death.fake-leave", "name", displayName), NamedTextColor.YELLOW));
 
         if (activeFakeName.isPresent()) {
             activeDisguiseRegistry.clear(playerId);
@@ -77,6 +81,8 @@ public class FakeLeaveListener implements Listener {
         pendingRespawnTasks.put(playerId, respawnTask);
     }
 
+    // HIGHEST stellt sicher dass wir die Quit-Message als letztes nullen,
+    // nachdem andere Plugins sie ggf. gesetzt haben.
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerQuit(PlayerQuitEvent event) {
         UUID playerId = event.getPlayer().getUniqueId();

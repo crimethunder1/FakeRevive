@@ -64,7 +64,7 @@ class ReviveCommandTest {
 
         assertTrue(handled);
         assertEquals(
-                Component.text("Benutzung: /revive <Spieler> oder /revive @a", NamedTextColor.RED),
+                Component.text("Benutzung: /revive <Spieler/@a> [Kit]", NamedTextColor.RED),
                 op.nextComponentMessage());
     }
 
@@ -122,9 +122,7 @@ class ReviveCommandTest {
         assertEquals(GameMode.SURVIVAL, firstVictim.getGameMode());
         assertEquals(GameMode.SURVIVAL, secondVictim.getGameMode());
         assertEquals(
-                Component.text("Es wurden erfolgreich ", NamedTextColor.GREEN)
-                        .append(Component.text(2, NamedTextColor.YELLOW))
-                        .append(Component.text(" Spieler wiederbelebt!", NamedTextColor.GREEN)),
+                Component.text("Es wurden erfolgreich 2 Spieler wiederbelebt!", NamedTextColor.GREEN),
                 op.nextComponentMessage());
         assertEquals(GameMode.SURVIVAL, bystander.getGameMode());
     }

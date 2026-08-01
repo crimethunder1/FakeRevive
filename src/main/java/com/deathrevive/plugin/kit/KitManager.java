@@ -1,6 +1,7 @@
 package com.deathrevive.plugin.kit;
 
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -38,7 +39,7 @@ public class KitManager {
 
         try {
             kitsConfig.load(kitsFile);
-        } catch (IOException | org.bukkit.configuration.InvalidConfigurationException e) {
+        } catch (IOException | InvalidConfigurationException e) {
             plugin.getLogger().warning("Konnte kits.yml nicht laden: " + e.getMessage());
             return;
         }

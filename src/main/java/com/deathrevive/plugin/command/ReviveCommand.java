@@ -7,6 +7,7 @@ import com.deathrevive.plugin.disguise.MojangIdentityFetcher;
 import com.deathrevive.plugin.disguise.PlayerDisguiseService;
 import com.deathrevive.plugin.kit.KitManager;
 import com.deathrevive.plugin.listener.FakeLeaveListener;
+import com.deathrevive.plugin.message.MessageService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -37,11 +38,13 @@ public class ReviveCommand implements CommandExecutor {
     private final MojangIdentityFetcher identityFetcher;
     private final KitManager kitManager;
     private final Logger logger;
+    private final MessageService messageService;
     private final AtomicBoolean replenishInProgress = new AtomicBoolean(false);
 
     public ReviveCommand(JavaPlugin plugin, FakeLeaveListener fakeLeaveListener, FakeNamePool fakeNamePool,
                           ActiveDisguiseRegistry activeDisguiseRegistry, PlayerDisguiseService playerDisguiseService,
-                          MojangIdentityFetcher identityFetcher, KitManager kitManager, Logger logger) {
+                          MojangIdentityFetcher identityFetcher, KitManager kitManager, Logger logger,
+                          MessageService messageService) {
         this.plugin = plugin;
         this.fakeLeaveListener = fakeLeaveListener;
         this.fakeNamePool = fakeNamePool;
@@ -50,12 +53,13 @@ public class ReviveCommand implements CommandExecutor {
         this.identityFetcher = identityFetcher;
         this.kitManager = kitManager;
         this.logger = logger;
+        this.messageService = messageService;
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length < 1 || args.length > 2) {
-            sender.sendMessage(Component.text("Benutzung: /revive <Spieler> oder /revive @a", NamedTextColor.RED));
+            sender.sendMessage(Component.text(messageService.get("commands.revive.usage"), NamedTextColor.RED));
             return true;
         }
 
@@ -80,12 +84,12 @@ public class ReviveCommand implements CommandExecutor {
 
             if (revivedCount == 0) {
                 sender.sendMessage(Component.text(
-                        "Es gab keine Spieler im Spectator-Modus, die wiederbelebt werden konnten.",
+                        messageService.get("commands.revive.no-targets"),
                         NamedTextColor.YELLOW));
             } else {
-                sender.sendMessage(Component.text("Es wurden erfolgreich ", NamedTextColor.GREEN)
-                        .append(Component.text(revivedCount, NamedTextColor.YELLOW))
-                        .append(Component.text(" Spieler wiederbelebt!", NamedTextColor.GREEN)));
+                sender.sendMessage(Component.text(
+                        messageService.get("commands.revive.success-multiple", "count", String.valueOf(revivedCount)),
+                        NamedTextColor.GREEN));
             }
             return true;
         }
@@ -93,17 +97,19 @@ public class ReviveCommand implements CommandExecutor {
         Player target = Bukkit.getPlayer(args[0]);
 
         if (target == null) {
-            sender.sendMessage(Component.text("Dieser Spieler wurde nicht gefunden.", NamedTextColor.RED));
+            sender.sendMessage(Component.text(messageService.get("commands.revive.not-found"), NamedTextColor.RED));
             return true;
         }
 
         if (!fakeLeaveListener.isFakedOut(target.getUniqueId())) {
-            sender.sendMessage(Component.text("Dieser Spieler ist nicht im Spectator-Modus!", NamedTextColor.RED));
+            sender.sendMessage(Component.text(messageService.get("commands.revive.not-in-spectator"), NamedTextColor.RED));
             return true;
         }
 
         revivePlayer(target, spawnLocation, kitName);
-        sender.sendMessage(Component.text("Du hast " + target.getName() + " erfolgreich wiederbelebt!", NamedTextColor.GREEN));
+        sender.sendMessage(Component.text(
+                messageService.get("commands.revive.success-single", "player", target.getName()),
+                NamedTextColor.GREEN));
         return true;
     }
 
@@ -114,17 +120,19 @@ public class ReviveCommand implements CommandExecutor {
 
         Optional<FakeIdentity> identity = fakeNamePool.assignRandomIdentity();
         if (identity.isPresent()) {
-            activeDisguiseRegistry.assign(player.getUniqueId(), identity.get());
-            playerDisguiseService.apply(player, identity.get());
+            FakeIdentity fakeIdentity = identity.get();
+            activeDisguiseRegistry.assign(player.getUniqueId(), fakeIdentity);
+            playerDisguiseService.apply(player, fakeIdentity);
 
-            String fakeName = identity.get().name();
-            player.sendMessage(Component.text("Du wurdest als \"" + fakeName + "\" verkleidet.", NamedTextColor.YELLOW));
-            player.sendActionBar(Component.text("Verkleidet als: " + fakeName, NamedTextColor.YELLOW));
+            String fakeName = fakeIdentity.name();
+            player.sendMessage(Component.text(
+                    messageService.get("disguise.applied", "name", fakeName), NamedTextColor.YELLOW));
+            player.sendActionBar(Component.text(
+                    messageService.get("disguise.applied-actionbar", "name", fakeName), NamedTextColor.YELLOW));
 
             replenishPool();
         } else {
-            logger.warning("Fake-Namen-Pool ist erschöpft, " + player.getName()
-                    + " wird ohne neue Verkleidung wiederbelebt.");
+            logger.warning(messageService.get("events.pool-exhausted", "player", player.getName()));
         }
 
         if (kitName != null) {

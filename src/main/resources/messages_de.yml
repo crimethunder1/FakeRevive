@@ -1,0 +1,31 @@
+commands:
+  revive:
+    usage: "Benutzung: /revive <Spieler/@a> [Kit]"
+    not-found: "Dieser Spieler wurde nicht gefunden."
+    not-in-spectator: "Dieser Spieler ist nicht im Spectator-Modus!"
+    no-targets: "Es gab keine Spieler im Spectator-Modus, die wiederbelebt werden konnten."
+    success-single: "Du hast {player} erfolgreich wiederbelebt!"
+    success-multiple: "Es wurden erfolgreich {count} Spieler wiederbelebt!"
+  undisguise:
+    usage: "Benutzung: /undisguise [Spieler]"
+    not-found: "Dieser Spieler wurde nicht gefunden."
+    not-disguised: "Dieser Spieler ist nicht verkleidet."
+    success-self: "Deine Verkleidung wurde entfernt."
+    success-other: "Du hast {player} die Verkleidung entfernt."
+  kit:
+    usage: "Benutzung: /kit save <Name> | /kit list"
+    players-only: "Nur Spieler können Kits speichern."
+    saved: "Kit \"{name}\" wurde gespeichert."
+    list-empty: "Keine Kits vorhanden."
+    list-format: "Verfügbare Kits: {kits}"
+disguise:
+  applied: "Du wurdest als \"{name}\" verkleidet."
+  applied-actionbar: "Verkleidet als: {name}"
+events:
+  death:
+    fake-leave: "{name} left the game"
+  pool-exhausted: "Fake-Namen-Pool erschöpft — {player} wird ohne Verkleidung wiederbelebt."
+plugin:
+  enable: "Fake-Leave & Revive erfolgreich aktiviert!"
+  disable: "Fake-Leave & Revive deaktiviert."
+  packetevents-missing: "PacketEvents ist nicht verfügbar — Verkleidungen werden nicht funktionieren."

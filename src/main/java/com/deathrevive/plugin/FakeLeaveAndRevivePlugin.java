@@ -9,6 +9,7 @@ import com.deathrevive.plugin.disguise.MojangIdentityFetcher;
 import com.deathrevive.plugin.disguise.PlayerDisguiseService;
 import com.deathrevive.plugin.kit.KitManager;
 import com.deathrevive.plugin.listener.FakeLeaveListener;
+import com.deathrevive.plugin.message.MessageService;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -22,25 +23,30 @@ public class FakeLeaveAndRevivePlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        saveDefaultConfig();
+        String language = getConfig().getString("language", "en");
+        MessageService messageService = new MessageService(this, language);
+
         activeDisguiseRegistry = new ActiveDisguiseRegistry();
         FakeNamePool fakeNamePool = new FakeNamePool(
                 getResource("names.json"),
                 new File(getDataFolder(), "used-fake-names.yml").toPath());
         PlayerDisguiseService playerDisguiseService = new PlayerDisguiseService(activeDisguiseRegistry);
-        playerDisguiseService.registerPacketListener(this);
+        playerDisguiseService.registerPacketListener(this, messageService);
         MojangIdentityFetcher identityFetcher = identityFetcherFactory.get();
         KitManager kitManager = new KitManager(this);
         kitManager.loadKits();
 
         FakeLeaveListener fakeLeaveListener =
-                new FakeLeaveListener(this, activeDisguiseRegistry, playerDisguiseService);
+                new FakeLeaveListener(this, activeDisguiseRegistry, playerDisguiseService, messageService);
         getServer().getPluginManager().registerEvents(fakeLeaveListener, this);
         this.getCommand("revive").setExecutor(new ReviveCommand(this, fakeLeaveListener, fakeNamePool,
-                activeDisguiseRegistry, playerDisguiseService, identityFetcher, kitManager, getLogger()));
+                activeDisguiseRegistry, playerDisguiseService, identityFetcher, kitManager, getLogger(),
+                messageService));
         this.getCommand("undisguise").setExecutor(
-                new UndisguiseCommand(activeDisguiseRegistry, playerDisguiseService));
-        this.getCommand("kit").setExecutor(new KitCommand(kitManager));
-        getLogger().info("Fake-Leave & Revive (PacketEvents-Native) erfolgreich aktiviert!");
+                new UndisguiseCommand(activeDisguiseRegistry, playerDisguiseService, messageService));
+        this.getCommand("kit").setExecutor(new KitCommand(kitManager, messageService));
+        getLogger().info(messageService.get("plugin.enable"));
     }
 
     @Override

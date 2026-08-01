@@ -9,6 +9,7 @@ import com.github.retrooper.packetevents.protocol.player.User;
 import com.github.retrooper.packetevents.protocol.player.UserProfile;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfoRemove;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfoUpdate;
+import com.deathrevive.plugin.message.MessageService;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -27,10 +28,10 @@ public class PlayerDisguiseService {
         this.activeDisguiseRegistry = activeDisguiseRegistry;
     }
 
-    public void registerPacketListener(JavaPlugin owningPlugin) {
+    public void registerPacketListener(JavaPlugin owningPlugin, MessageService messageService) {
         this.plugin = owningPlugin;
         if (!isPacketEventsAvailable()) {
-            owningPlugin.getLogger().warning("PacketEvents ist nicht verfügbar — Verkleidungen werden nicht funktionieren.");
+            owningPlugin.getLogger().warning(messageService.get("plugin.packetevents-missing"));
             return;
         }
         PacketEvents.getAPI().getEventManager().registerListeners(new PlayerInfoInterceptor(activeDisguiseRegistry));
@@ -46,6 +47,7 @@ public class PlayerDisguiseService {
     public void remove(Player player) {
         if (plugin == null || !isPacketEventsAvailable()) return;
         User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
+        if (user == null) return;
         UserProfile realProfile = user.getProfile();
         refreshEntityForAllObservers(player, realProfile);
     }
