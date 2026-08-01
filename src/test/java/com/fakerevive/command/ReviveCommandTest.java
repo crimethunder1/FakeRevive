@@ -21,6 +21,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReviveCommandTest {
 
+    private static final Component PREFIX = Component.text("[FakeRevive] ", NamedTextColor.AQUA);
+
     private ServerMock server;
     private PlayerMock op;
 
@@ -64,7 +66,7 @@ class ReviveCommandTest {
 
         assertTrue(handled);
         assertEquals(
-                Component.text("Benutzung: /fr revive <Spieler/@a> [Kit]", NamedTextColor.RED),
+                PREFIX.append(Component.text("Benutzung: /fr revive <Spieler/@a> [Kit]", NamedTextColor.RED)),
                 op.nextComponentMessage());
     }
 
@@ -73,7 +75,7 @@ class ReviveCommandTest {
         server.dispatchCommand(op, "fr revive Ghost");
 
         assertEquals(
-                Component.text("Dieser Spieler wurde nicht gefunden.", NamedTextColor.RED),
+                PREFIX.append(Component.text("Dieser Spieler wurde nicht gefunden.", NamedTextColor.RED)),
                 op.nextComponentMessage());
     }
 
@@ -84,7 +86,7 @@ class ReviveCommandTest {
         server.dispatchCommand(op, "fr revive Target");
 
         assertEquals(
-                Component.text("Dieser Spieler ist nicht im Spectator-Modus!", NamedTextColor.RED),
+                PREFIX.append(Component.text("Dieser Spieler ist nicht im Spectator-Modus!", NamedTextColor.RED)),
                 op.nextComponentMessage());
     }
 
@@ -98,13 +100,13 @@ class ReviveCommandTest {
 
         assertEquals(GameMode.SURVIVAL, target.getGameMode());
         assertEquals(
-                Component.text("Du hast Target erfolgreich wiederbelebt!", NamedTextColor.GREEN),
+                PREFIX.append(Component.text("Du hast Target erfolgreich wiederbelebt!", NamedTextColor.GREEN)),
                 op.nextComponentMessage());
 
         server.dispatchCommand(op, "fr revive Target");
 
         assertEquals(
-                Component.text("Dieser Spieler ist nicht im Spectator-Modus!", NamedTextColor.RED),
+                PREFIX.append(Component.text("Dieser Spieler ist nicht im Spectator-Modus!", NamedTextColor.RED)),
                 op.nextComponentMessage());
     }
 
@@ -122,7 +124,7 @@ class ReviveCommandTest {
         assertEquals(GameMode.SURVIVAL, firstVictim.getGameMode());
         assertEquals(GameMode.SURVIVAL, secondVictim.getGameMode());
         assertEquals(
-                Component.text("Es wurden erfolgreich 2 Spieler wiederbelebt!", NamedTextColor.GREEN),
+                PREFIX.append(Component.text("Es wurden erfolgreich 2 Spieler wiederbelebt!", NamedTextColor.GREEN)),
                 op.nextComponentMessage());
         assertEquals(GameMode.SURVIVAL, bystander.getGameMode());
     }
@@ -134,9 +136,9 @@ class ReviveCommandTest {
         server.dispatchCommand(op, "fr revive @a");
 
         assertEquals(
-                Component.text(
+                PREFIX.append(Component.text(
                         "Es gab keine Spieler im Spectator-Modus, die wiederbelebt werden konnten.",
-                        NamedTextColor.YELLOW),
+                        NamedTextColor.YELLOW)),
                 op.nextComponentMessage());
     }
 

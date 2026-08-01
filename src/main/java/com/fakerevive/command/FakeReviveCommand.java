@@ -49,6 +49,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
     private final Logger logger;
     private final MessageService messageService;
     private final AtomicBoolean replenishInProgress = new AtomicBoolean(false);
+    private static final Component PREFIX = Component.text("[FakeRevive] ", NamedTextColor.AQUA);
 
     public FakeReviveCommand(JavaPlugin plugin, FakeLeaveListener fakeLeaveListener, FakeNamePool fakeNamePool,
                               ActiveDisguiseRegistry activeDisguiseRegistry, PlayerDisguiseService playerDisguiseService,
@@ -68,7 +69,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
-            sender.sendMessage(Component.text(messageService.get("commands.fr.usage"), NamedTextColor.RED));
+            sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.fr.usage"), NamedTextColor.RED)));
             return true;
         }
 
@@ -88,7 +89,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
             case "help":
                 return handleHelp(sender);
             default:
-                sender.sendMessage(Component.text(messageService.get("commands.fr.usage"), NamedTextColor.RED));
+                sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.fr.usage"), NamedTextColor.RED)));
                 return true;
         }
     }
@@ -178,7 +179,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
 
     private boolean handleRevive(CommandSender sender, String[] args) {
         if (args.length < 1 || args.length > 2) {
-            sender.sendMessage(Component.text(messageService.get("commands.revive.usage"), NamedTextColor.RED));
+            sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.revive.usage"), NamedTextColor.RED)));
             return true;
         }
 
@@ -202,13 +203,13 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
             }
 
             if (revivedCount == 0) {
-                sender.sendMessage(Component.text(
+                sender.sendMessage(PREFIX.append(Component.text(
                         messageService.get("commands.revive.no-targets"),
-                        NamedTextColor.YELLOW));
+                        NamedTextColor.YELLOW)));
             } else {
-                sender.sendMessage(Component.text(
+                sender.sendMessage(PREFIX.append(Component.text(
                         messageService.get("commands.revive.success-multiple", "count", String.valueOf(revivedCount)),
-                        NamedTextColor.GREEN));
+                        NamedTextColor.GREEN)));
             }
             return true;
         }
@@ -216,19 +217,19 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         Player target = Bukkit.getPlayer(args[0]);
 
         if (target == null) {
-            sender.sendMessage(Component.text(messageService.get("commands.revive.not-found"), NamedTextColor.RED));
+            sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.revive.not-found"), NamedTextColor.RED)));
             return true;
         }
 
         if (!fakeLeaveListener.isFakedOut(target.getUniqueId())) {
-            sender.sendMessage(Component.text(messageService.get("commands.revive.not-in-spectator"), NamedTextColor.RED));
+            sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.revive.not-in-spectator"), NamedTextColor.RED)));
             return true;
         }
 
         revivePlayer(target, spawnLocation, kitName);
-        sender.sendMessage(Component.text(
+        sender.sendMessage(PREFIX.append(Component.text(
                 messageService.get("commands.revive.success-single", "player", target.getName()),
-                NamedTextColor.GREEN));
+                NamedTextColor.GREEN)));
         return true;
     }
 
@@ -236,31 +237,31 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         Player target;
         if (args.length == 0) {
             if (!(sender instanceof Player)) {
-                sender.sendMessage(Component.text(messageService.get("commands.undisguise.usage"), NamedTextColor.RED));
+                sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.undisguise.usage"), NamedTextColor.RED)));
                 return true;
             }
             target = (Player) sender;
         } else {
             target = Bukkit.getPlayer(args[0]);
             if (target == null) {
-                sender.sendMessage(Component.text(messageService.get("commands.undisguise.not-found"), NamedTextColor.RED));
+                sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.undisguise.not-found"), NamedTextColor.RED)));
                 return true;
             }
         }
 
         if (activeDisguiseRegistry.getIdentity(target.getUniqueId()).isEmpty()) {
-            sender.sendMessage(Component.text(messageService.get("commands.undisguise.not-disguised"), NamedTextColor.RED));
+            sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.undisguise.not-disguised"), NamedTextColor.RED)));
             return true;
         }
 
         activeDisguiseRegistry.clear(target.getUniqueId());
         playerDisguiseService.remove(target);
-        target.sendMessage(Component.text(messageService.get("commands.undisguise.success-self"), NamedTextColor.YELLOW));
+        target.sendMessage(PREFIX.append(Component.text(messageService.get("commands.undisguise.success-self"), NamedTextColor.YELLOW)));
 
         if (sender != target) {
-            sender.sendMessage(Component.text(
+            sender.sendMessage(PREFIX.append(Component.text(
                     messageService.get("commands.undisguise.success-other", "player", target.getName()),
-                    NamedTextColor.GREEN));
+                    NamedTextColor.GREEN)));
         }
 
         return true;
@@ -268,13 +269,13 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
 
     private boolean handleDisguise(CommandSender sender, String[] args) {
         if (args.length < 1 || args.length > 2) {
-            sender.sendMessage(Component.text(messageService.get("commands.disguise.usage"), NamedTextColor.RED));
+            sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.disguise.usage"), NamedTextColor.RED)));
             return true;
         }
 
         Player target = Bukkit.getPlayer(args[0]);
         if (target == null) {
-            sender.sendMessage(Component.text(messageService.get("commands.disguise.not-found"), NamedTextColor.RED));
+            sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.disguise.not-found"), NamedTextColor.RED)));
             return true;
         }
 
@@ -284,7 +285,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
 
         Optional<FakeIdentity> identity = fakeNamePool.assignRandomIdentity();
         if (identity.isEmpty()) {
-            sender.sendMessage(Component.text(messageService.get("commands.disguise.pool-exhausted"), NamedTextColor.RED));
+            sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.disguise.pool-exhausted"), NamedTextColor.RED)));
             return true;
         }
 
@@ -293,15 +294,15 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         playerDisguiseService.apply(target, fakeIdentity);
 
         String fakeName = fakeIdentity.name();
-        target.sendMessage(Component.text(
-                messageService.get("disguise.applied", "name", fakeName), NamedTextColor.YELLOW));
-        target.sendActionBar(Component.text(
-                messageService.get("disguise.applied-actionbar", "name", fakeName), NamedTextColor.YELLOW));
+        target.sendMessage(PREFIX.append(Component.text(
+                messageService.get("disguise.applied", "name", fakeName), NamedTextColor.YELLOW)));
+        target.sendActionBar(PREFIX.append(Component.text(
+                messageService.get("disguise.applied-actionbar", "name", fakeName), NamedTextColor.YELLOW)));
 
         if (!sender.equals(target)) {
-            sender.sendMessage(Component.text(
+            sender.sendMessage(PREFIX.append(Component.text(
                     messageService.get("commands.disguise.success", "player", target.getName(), "name", fakeName),
-                    NamedTextColor.GREEN));
+                    NamedTextColor.GREEN)));
         }
 
         if (kitName != null) {
@@ -322,40 +323,40 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
 
     private boolean handleKit(CommandSender sender, String[] args) {
         if (args.length < 1) {
-            sender.sendMessage(Component.text(messageService.get("commands.kit.usage"), NamedTextColor.RED));
+            sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.kit.usage"), NamedTextColor.RED)));
             return true;
         }
 
         if (args[0].equalsIgnoreCase("save")) {
             if (args.length != 2) {
-                sender.sendMessage(Component.text(messageService.get("commands.kit.usage"), NamedTextColor.RED));
+                sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.kit.usage"), NamedTextColor.RED)));
                 return true;
             }
 
             if (!(sender instanceof Player)) {
-                sender.sendMessage(Component.text(messageService.get("commands.kit.players-only"), NamedTextColor.RED));
+                sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.kit.players-only"), NamedTextColor.RED)));
                 return true;
             }
 
             String name = args[1];
             kitManager.saveKit(name, (Player) sender);
-            sender.sendMessage(Component.text(messageService.get("commands.kit.saved", "name", name), NamedTextColor.GREEN));
+            sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.kit.saved", "name", name), NamedTextColor.GREEN)));
             return true;
         }
 
         if (args[0].equalsIgnoreCase("list")) {
             if (args.length != 1) {
-                sender.sendMessage(Component.text(messageService.get("commands.kit.usage"), NamedTextColor.RED));
+                sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.kit.usage"), NamedTextColor.RED)));
                 return true;
             }
 
             Set<String> kitNames = kitManager.getKitNames();
             if (kitNames.isEmpty()) {
-                sender.sendMessage(Component.text(messageService.get("commands.kit.list-empty"), NamedTextColor.YELLOW));
+                sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.kit.list-empty"), NamedTextColor.YELLOW)));
             } else {
-                sender.sendMessage(Component.text(
+                sender.sendMessage(PREFIX.append(Component.text(
                         messageService.get("commands.kit.list-format", "kits", String.join(", ", kitNames)),
-                        NamedTextColor.GREEN));
+                        NamedTextColor.GREEN)));
             }
             return true;
         }
@@ -368,21 +369,21 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
             return handleKitEquip(sender, args);
         }
 
-        sender.sendMessage(Component.text(messageService.get("commands.kit.usage"), NamedTextColor.RED));
+        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.kit.usage"), NamedTextColor.RED)));
         return true;
     }
 
     private boolean handleKitGive(CommandSender sender, String[] args) {
         if (args.length != 3) {
-            sender.sendMessage(Component.text(messageService.get("commands.kit.give-usage"), NamedTextColor.RED));
+            sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.kit.give-usage"), NamedTextColor.RED)));
             return true;
         }
 
         String name = args[1];
         Player target = Bukkit.getPlayer(args[2]);
         if (target == null) {
-            sender.sendMessage(Component.text(
-                    messageService.get("commands.kit.give-player-not-found", "player", args[2]), NamedTextColor.RED));
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.kit.give-player-not-found", "player", args[2]), NamedTextColor.RED)));
             return true;
         }
 
@@ -391,20 +392,20 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         }
 
         if (!kitManager.giveKit(name, target)) {
-            sender.sendMessage(Component.text(
-                    messageService.get("commands.kit.give-kit-not-found", "name", name), NamedTextColor.RED));
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.kit.give-kit-not-found", "name", name), NamedTextColor.RED)));
             return true;
         }
 
-        sender.sendMessage(Component.text(
+        sender.sendMessage(PREFIX.append(Component.text(
                 messageService.get("commands.kit.give-success", "name", name, "player", target.getName()),
-                NamedTextColor.GREEN));
+                NamedTextColor.GREEN)));
         return true;
     }
 
     private boolean handleKitEquip(CommandSender sender, String[] args) {
         if (args.length < 2 || args.length > 3) {
-            sender.sendMessage(Component.text(messageService.get("commands.kit.equip-usage"), NamedTextColor.RED));
+            sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.kit.equip-usage"), NamedTextColor.RED)));
             return true;
         }
 
@@ -415,13 +416,13 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
             target = Bukkit.getPlayer(args[2]);
             equippingOther = true;
             if (target == null) {
-                sender.sendMessage(Component.text(
-                        messageService.get("commands.kit.equip-player-not-found", "player", args[2]), NamedTextColor.RED));
+                sender.sendMessage(PREFIX.append(Component.text(
+                        messageService.get("commands.kit.equip-player-not-found", "player", args[2]), NamedTextColor.RED)));
                 return true;
             }
         } else {
             if (!(sender instanceof Player)) {
-                sender.sendMessage(Component.text(messageService.get("commands.kit.players-only"), NamedTextColor.RED));
+                sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.kit.players-only"), NamedTextColor.RED)));
                 return true;
             }
             target = (Player) sender;
@@ -436,18 +437,18 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         }
 
         if (!kitManager.equipKit(name, target)) {
-            sender.sendMessage(Component.text(
-                    messageService.get("commands.kit.equip-kit-not-found", "name", name), NamedTextColor.RED));
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.kit.equip-kit-not-found", "name", name), NamedTextColor.RED)));
             return true;
         }
 
         if (equippingOther) {
-            sender.sendMessage(Component.text(
+            sender.sendMessage(PREFIX.append(Component.text(
                     messageService.get("commands.kit.equip-success-other", "name", name, "player", target.getName()),
-                    NamedTextColor.GREEN));
+                    NamedTextColor.GREEN)));
         } else {
-            sender.sendMessage(Component.text(
-                    messageService.get("commands.kit.equip-success", "name", name), NamedTextColor.GREEN));
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.kit.equip-success", "name", name), NamedTextColor.GREEN)));
         }
         return true;
     }
@@ -456,22 +457,22 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         plugin.reloadConfig();
         messageService.reload(plugin);
         kitManager.loadKits();
-        sender.sendMessage(Component.text(
-                messageService.get("commands.reload.success"), NamedTextColor.GREEN));
+        sender.sendMessage(PREFIX.append(Component.text(
+                messageService.get("commands.reload.success"), NamedTextColor.GREEN)));
         return true;
     }
 
     private boolean handleHelp(CommandSender sender) {
-        sender.sendMessage(Component.text(messageService.get("commands.help.header"), NamedTextColor.GOLD));
-        sender.sendMessage(Component.text(messageService.get("commands.help.revive"), NamedTextColor.YELLOW));
-        sender.sendMessage(Component.text(messageService.get("commands.help.undisguise"), NamedTextColor.YELLOW));
-        sender.sendMessage(Component.text(messageService.get("commands.help.disguise"), NamedTextColor.YELLOW));
-        sender.sendMessage(Component.text(messageService.get("commands.help.kit-save"), NamedTextColor.YELLOW));
-        sender.sendMessage(Component.text(messageService.get("commands.help.kit-list"), NamedTextColor.YELLOW));
-        sender.sendMessage(Component.text(messageService.get("commands.help.kit-give"), NamedTextColor.YELLOW));
-        sender.sendMessage(Component.text(messageService.get("commands.help.kit-equip"), NamedTextColor.YELLOW));
-        sender.sendMessage(Component.text(messageService.get("commands.help.reload"), NamedTextColor.YELLOW));
-        sender.sendMessage(Component.text(messageService.get("commands.help.help"), NamedTextColor.YELLOW));
+        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.header"), NamedTextColor.GOLD)));
+        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.revive"), NamedTextColor.YELLOW)));
+        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.undisguise"), NamedTextColor.YELLOW)));
+        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.disguise"), NamedTextColor.YELLOW)));
+        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.kit-save"), NamedTextColor.YELLOW)));
+        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.kit-list"), NamedTextColor.YELLOW)));
+        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.kit-give"), NamedTextColor.YELLOW)));
+        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.kit-equip"), NamedTextColor.YELLOW)));
+        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.reload"), NamedTextColor.YELLOW)));
+        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.help"), NamedTextColor.YELLOW)));
         return true;
     }
 
@@ -487,10 +488,10 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
             playerDisguiseService.apply(player, fakeIdentity);
 
             String fakeName = fakeIdentity.name();
-            player.sendMessage(Component.text(
-                    messageService.get("disguise.applied", "name", fakeName), NamedTextColor.YELLOW));
-            player.sendActionBar(Component.text(
-                    messageService.get("disguise.applied-actionbar", "name", fakeName), NamedTextColor.YELLOW));
+            player.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("disguise.applied", "name", fakeName), NamedTextColor.YELLOW)));
+            player.sendActionBar(PREFIX.append(Component.text(
+                    messageService.get("disguise.applied-actionbar", "name", fakeName), NamedTextColor.YELLOW)));
 
             replenishPool();
         } else {

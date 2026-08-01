@@ -5,23 +5,23 @@ message is replaced with a fake "{name} left the game" broadcast and the
 player is held in spectator mode at their death location instead of seeing
 the regular respawn screen. An admin can later revive them with `/fr
 revive`, at which point they're disguised under a random fake name and
-borrowed skin — visible to everyone else in chat, tab list, and nametag —
+borrowed skin (visible to everyone else in chat, tab list, and nametag)
 until their next death.
 
 ## Features
 
-- On death: the real death message is replaced by a "{name} left the game"
+* On death: the real death message is replaced by a "{name} left the game"
   broadcast to all players
-- A wither death sound plays for all players within 48 blocks of the death
-- Kill messages show fake names instead of real ones (configurable)
-- The player is held in spectator mode at their death location, awaiting
+* A wither death sound plays for all players within 48 blocks of the death
+* Kill messages show fake names instead of real ones (configurable)
+* The player is held in spectator mode at their death location, awaiting
   revive
-- On revive: assigned a random fake name and a borrowed skin via
-  PacketEvents packet interception (name tag, tab list, and skin — no extra
+* On revive: assigned a random fake name and a borrowed skin via
+  PacketEvents packet interception (name tag, tab list, and skin; no extra
   entity involved)
-- Disguises survive reconnects and stay active until the player's next
+* Disguises survive reconnects and stay active until the player's next
   death
-- Used fake names are permanently retired and never reassigned
+* Used fake names are permanently retired and never reassigned
 
 ## Commands
 
@@ -55,16 +55,16 @@ kits:
   clear-before-equip: true
 ```
 
-- `language` — `de`, `en`, or `fr` (default: `de`)
-- `kill-message.enabled` — show kill messages with fake names substituted in (default: `true`)
-- `kits.clear-before-give` — clear the target's inventory before `/fr kit give` (default: `false`)
-- `kits.clear-before-equip` — clear all of the target's slots before `/fr kit equip` (default: `true`)
+* `language`: `de`, `en`, or `fr` (default: `de`)
+* `kill-message.enabled`: show kill messages with fake names substituted in (default: `true`)
+* `kits.clear-before-give`: clear the target's inventory before `/fr kit give` (default: `false`)
+* `kits.clear-before-equip`: clear all of the target's slots before `/fr kit equip` (default: `true`)
 
 ## Requirements
 
-- Paper 1.21.4 or newer
-- [PacketEvents](https://www.spigotmc.org/resources/packetevents-api.80279/) installed as a separate plugin in the `plugins` folder (disguises are implemented entirely through PacketEvents packet interception)
-- Persistent internet access to `api.mojang.com` and `sessionserver.mojang.com` (used to keep the fake-identity pool topped up, see below)
+* Paper 1.21.4 or newer
+* [PacketEvents](https://www.spigotmc.org/resources/packetevents-api.80279/) installed as a separate plugin in the `plugins` folder (disguises are implemented entirely through PacketEvents packet interception)
+* Persistent internet access to `api.mojang.com` and `sessionserver.mojang.com` (used to keep the fake-identity pool topped up, see below)
 
 ## Installation
 
@@ -75,19 +75,19 @@ kits:
 
 ## How disguises work
 
-Around 200 fake identities ship bundled in `names.json` — usernames
+Around 200 fake identities ship bundled in `names.json`: usernames
 verified to not belong to any existing Minecraft account, each paired with
 a skin borrowed from an unrelated real donor account. After each revive,
 one fresh identity is fetched asynchronously from the Mojang API to keep
 the pool topped up (this requires internet access to `api.mojang.com` and
-`sessionserver.mojang.com`). Used names are permanently retired — the pool
+`sessionserver.mojang.com`). Used names are permanently retired: the pool
 never reassigns a name that's already been handed out.
 
 **Known limitations:**
-- A disguised player's own client always renders their real skin in
-  third-person view — this is a Minecraft client limitation and cannot be
+* A disguised player's own client always renders their real skin in
+  third-person view: this is a Minecraft client limitation and cannot be
   worked around without a client-side mod.
-- Tab-completion (e.g. `/msg <Tab>`) still shows real player names, not
+* Tab-completion (e.g. `/msg <Tab>`) still shows real player names, not
   fake names, since it operates on actual connected player names rather
   than the visual disguise.
 
@@ -95,9 +95,9 @@ never reassigns a name that's already been handed out.
 
 Kits are stored in `plugins/FakeRevive/kits.yml`.
 
-- `/fr kit give` adds items via `addItem()` — anything that doesn't fit in
+* `/fr kit give` adds items via `addItem()`: anything that doesn't fit in
   the inventory drops on the ground.
-- `/fr kit equip` sets all slots directly — nothing is dropped.
+* `/fr kit equip` sets all slots directly: nothing is dropped.
 
 ## Building from source
 
@@ -111,7 +111,7 @@ The built plugin will be at `target/fakerevive-1.0.0.jar`, ready to be
 copied into a Paper server's `plugins` folder.
 
 Under JDK 25, the build (including `mvn test`) may fail with
-`Cannot load from object array because "this.hashes" is null` — this is a
+`Cannot load from object array because "this.hashes" is null`: this is a
 javac bug unrelated to the plugin code. Workaround: append
 `-Dmaven.compiler.fork=true`, e.g. `mvn package -Dmaven.compiler.fork=true`.
 
