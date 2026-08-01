@@ -25,6 +25,12 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * Handles death, quit, and join events to implement the fake-leave mechanic. On death the
+ * real death message is suppressed and replaced with a configurable "{name} left the game"
+ * broadcast; the player is held in spectator at their death location until revived via
+ * {@link com.deathrevive.plugin.command.ReviveCommand}.
+ */
 public class FakeLeaveListener implements Listener {
 
     private final JavaPlugin plugin;
@@ -105,10 +111,15 @@ public class FakeLeaveListener implements Listener {
                 .ifPresent(identity -> playerDisguiseService.apply(player, identity));
     }
 
+    /** @return {@code true} if the player is currently in fake-out state (dead, awaiting revive). */
     public boolean isFakedOut(UUID playerId) {
         return fakedOutPlayers.contains(playerId);
     }
 
+    /**
+     * Removes the player from fake-out state. Called by
+     * {@link com.deathrevive.plugin.command.ReviveCommand} on successful revive.
+     */
     public void clearFakedOut(UUID playerId) {
         fakedOutPlayers.remove(playerId);
     }

@@ -19,6 +19,14 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 
+/**
+ * Manages the pool of available {@link FakeIdentity} objects handed out during revives.
+ * Identities are loaded from {@code names.json} on construction and filtered against
+ * previously used names persisted in {@code used-fake-names.yml}, ensuring no name is
+ * ever reassigned across server restarts. Fresh identities fetched live from the Mojang
+ * API during gameplay are added via {@link #offer}.
+ * <p>Not thread-safe — all methods must be called from the server main thread.
+ */
 public class FakeNamePool {
 
     private static final String USED_NAMES_KEY = "used-names";
@@ -66,6 +74,12 @@ public class FakeNamePool {
         return known;
     }
 
+    /**
+     * Removes a random identity from the available pool, permanently records its name as used,
+     * and persists the updated used-name list to disk. Uses a swap-and-remove strategy (O(1))
+     * to avoid shifting the backing list on every call.
+     * @return the assigned identity, or empty if the pool is currently exhausted.
+     */
     public Optional<FakeIdentity> assignRandomIdentity() {
         if (availableIdentities.isEmpty()) {
             return Optional.empty();

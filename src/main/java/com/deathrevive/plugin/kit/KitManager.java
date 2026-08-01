@@ -16,6 +16,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Manages named server kits — snapshots of a player's inventory, armor slots, and offhand.
+ * Kits are stored in {@code kits.yml} inside the plugin's data folder. Items are serialised
+ * as Base64-encoded byte arrays via Paper's {@link ItemStack#serializeAsBytes()}.
+ */
 public class KitManager {
 
     private static final int INVENTORY_SIZE = 36;
@@ -31,6 +36,10 @@ public class KitManager {
         this.kitsFile = new File(plugin.getDataFolder(), "kits.yml");
     }
 
+    /**
+     * Loads kit names from {@code kits.yml}. Safe to call multiple times; clears the
+     * in-memory kit list before reloading. A missing file is treated as an empty kit list.
+     */
     public void loadKits() {
         kitNames.clear();
         if (!kitsFile.exists()) {
@@ -50,6 +59,10 @@ public class KitManager {
         }
     }
 
+    /**
+     * Captures the player's current inventory, armor, and offhand as a named kit and
+     * persists it to {@code kits.yml}, overwriting any existing kit with the same name.
+     */
     public void saveKit(String name, Player player) {
         PlayerInventory inventory = player.getInventory();
 
@@ -72,6 +85,13 @@ public class KitManager {
         save();
     }
 
+    /**
+     * Equips the named kit onto the player by setting inventory, armor, and offhand contents
+     * directly. Items are placed into the correct slots regardless of inventory capacity —
+     * nothing is dropped.
+     * @return {@code true} if the kit was found and applied; {@code false} if no kit with
+     *     that name exists.
+     */
     public boolean equipKit(String name, Player player) {
         if (!kitNames.contains(name)) {
             return false;
@@ -101,6 +121,7 @@ public class KitManager {
         return true;
     }
 
+    /** @return a snapshot of all currently registered kit names; modifications do not affect the registry. */
     public Set<String> getKitNames() {
         return new HashSet<>(kitNames);
     }
