@@ -53,8 +53,8 @@ disguise:
 events:
   death:
     fake-leave: "{name} left the game"
-  pool-exhausted: "Name pool exhausted — {player} revived without disguise."
+  pool-exhausted: "Name pool exhausted, {player} revived without disguise."
 plugin:
   enable: "FakeRevive successfully enabled!"
   disable: "FakeRevive disabled."
-  packetevents-missing: "PacketEvents not available — disguises will not work."
+  packetevents-missing: "PacketEvents not available. Disguises will not work."
