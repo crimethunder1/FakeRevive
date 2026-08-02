@@ -9,7 +9,7 @@ commands:
     description: Main command for FakeRevive.
     permission: fakerevive.admin
     permission-message: "§cYou don't have permission to use this command."
-    usage: /fr <revive|undisguise|disguise|kit|reload|help>
+    usage: /fr <revive|undisguise|disguise|kit|team|reload|help>
     aliases: [fakerevive]
 permissions:
   fakerevive.admin:

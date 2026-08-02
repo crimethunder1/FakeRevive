@@ -1,13 +1,15 @@
 commands:
   fr:
-    usage: "Usage: /fr <revive|undisguise|disguise|kit|reload|help>"
+    usage: "Usage: /fr <revive|undisguise|disguise|kit|team|reload|help>"
   revive:
-    usage: "Usage: /fr revive <player/@a> [kit]"
+    usage: "Usage: /fr revive <player/@a/<team>> [kit]"
     not-found: "Player not found."
     not-in-spectator: "This player is not in spectator mode!"
     no-targets: "No players in spectator mode to revive."
+    no-team-targets: "No faked-out players found in team \"{team}\"."
     success-single: "Successfully revived {player}!"
     success-multiple: "Successfully revived {count} players!"
+    success-team: "Revived {count} players from team \"{team}\"."
   undisguise:
     usage: "Usage: /fr undisguise [player]"
     not-found: "Player not found."
@@ -34,17 +36,30 @@ commands:
     equip-player-not-found: "Player \"{player}\" not found."
     equip-success: "Kit \"{name}\" equipped."
     equip-success-other: "Kit \"{name}\" equipped for {player}."
+  team:
+    players-only: "Only players can use this command."
+    already-exists: "Team \"{team}\" already exists."
+    created: "Team \"{team}\" has been created."
+    deleted: "Team \"{team}\" has been deleted."
+    not-found: "Team \"{team}\" not found."
+    player-added: "{player} has been added to team \"{team}\"."
+    player-removed: "{player} has been removed from team \"{team}\"."
+    player-not-found: "Player \"{player}\" not found."
+    kit-set: "Kit \"{kit}\" has been assigned to team \"{team}\"."
+    kit-removed: "Kit removed from team \"{team}\"."
+    cancelled: "Action cancelled."
   reload:
     success: "Config and kits reloaded."
   help:
     header: "Help"
-    revive: "/fr revive <player/@a> [kit]: Revive a player"
+    revive: "/fr revive <player/@a/team> [kit]: Revive a player"
     undisguise: "/fr undisguise [player]: Remove a player's disguise"
     disguise: "/fr disguise <player> [kit]: Manually disguise a player"
     kit-save: "/fr kit save <name>: Save inventory as a kit"
     kit-list: "/fr kit list: List all kits"
     kit-give: "/fr kit give <kit> <player>: Give a kit to a player"
     kit-equip: "/fr kit equip <kit> [player]: Equip a kit"
+    team: "/fr team: Open the team manager"
     reload: "/fr reload: Reload config and kits"
     help: "/fr help: Show this help"
 disguise:
@@ -58,3 +73,23 @@ plugin:
   enable: "FakeRevive successfully enabled!"
   disable: "FakeRevive disabled."
   packetevents-missing: "PacketEvents not available. Disguises will not work."
+gui:
+  team:
+    main-title: "FakeRevive Teams"
+    detail-title: "Team: {team}"
+    create: "Create New Team"
+    back: "Back"
+    add-player: "Add Player"
+    set-kit: "Set Kit"
+    delete: "Delete Team"
+    no-kit: "No Kit"
+    current-kit: "Kit: {kit}"
+    lore-kit: "Kit: {kit}"
+    lore-members: "Members: {count}"
+    lore-click: "Click to manage"
+    member-click-remove: "Click to remove"
+    type-team-name: "Type the team name (or 'cancel'):"
+    type-player-name: "Type the player name (or 'cancel'):"
+  kit:
+    title: "Select Kit"
+    remove: "Remove Kit"

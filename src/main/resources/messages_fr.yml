@@ -1,13 +1,15 @@
 commands:
   fr:
-    usage: "Utilisation : /fr <revive|undisguise|disguise|kit|reload|help>"
+    usage: "Utilisation : /fr <revive|undisguise|disguise|kit|team|reload|help>"
   revive:
-    usage: "Utilisation : /fr revive <joueur/@a> [kit]"
+    usage: "Utilisation : /fr revive <joueur/@a/<équipe>> [kit]"
     not-found: "Joueur introuvable."
     not-in-spectator: "Ce joueur n'est pas en mode spectateur !"
     no-targets: "Aucun joueur en mode spectateur à réanimer."
+    no-team-targets: "Aucun joueur en spectateur dans l'équipe \"{team}\"."
     success-single: "{player} a été réanimé avec succès !"
     success-multiple: "{count} joueurs ont été réanimés avec succès !"
+    success-team: "{count} joueurs de l'équipe \"{team}\" ont été réanimés."
   undisguise:
     usage: "Utilisation : /fr undisguise [joueur]"
     not-found: "Joueur introuvable."
@@ -34,17 +36,30 @@ commands:
     equip-player-not-found: "Joueur \"{player}\" introuvable."
     equip-success: "Kit \"{name}\" équipé."
     equip-success-other: "Kit \"{name}\" équipé pour {player}."
+  team:
+    players-only: "Seuls les joueurs peuvent utiliser cette commande."
+    already-exists: "L'équipe \"{team}\" existe déjà."
+    created: "L'équipe \"{team}\" a été créée."
+    deleted: "L'équipe \"{team}\" a été supprimée."
+    not-found: "Équipe \"{team}\" introuvable."
+    player-added: "{player} a été ajouté à l'équipe \"{team}\"."
+    player-removed: "{player} a été retiré de l'équipe \"{team}\"."
+    player-not-found: "Joueur \"{player}\" introuvable."
+    kit-set: "Le kit \"{kit}\" a été assigné à l'équipe \"{team}\"."
+    kit-removed: "Kit retiré de l'équipe \"{team}\"."
+    cancelled: "Action annulée."
   reload:
     success: "Config et kits rechargés."
   help:
     header: "Aide"
-    revive: "/fr revive <joueur/@a> [kit]: Réanimer un joueur"
+    revive: "/fr revive <joueur/@a/équipe> [kit]: Réanimer un joueur"
     undisguise: "/fr undisguise [joueur]: Retirer un déguisement"
     disguise: "/fr disguise <joueur> [kit]: Déguiser manuellement un joueur"
     kit-save: "/fr kit save <nom>: Sauvegarder l'inventaire comme kit"
     kit-list: "/fr kit list: Afficher tous les kits"
     kit-give: "/fr kit give <kit> <joueur>: Donner un kit à un joueur"
     kit-equip: "/fr kit equip <kit> [joueur]: Équiper un kit"
+    team: "/fr team: Ouvrir le gestionnaire d'équipes"
     reload: "/fr reload: Recharger la config et les kits"
     help: "/fr help: Afficher l'aide"
 disguise:
@@ -58,3 +73,23 @@ plugin:
   enable: "FakeRevive activé avec succès !"
   disable: "FakeRevive désactivé."
   packetevents-missing: "PacketEvents non disponible. Les déguisements ne fonctionneront pas."
+gui:
+  team:
+    main-title: "Équipes FakeRevive"
+    detail-title: "Équipe : {team}"
+    create: "Créer une équipe"
+    back: "Retour"
+    add-player: "Ajouter un joueur"
+    set-kit: "Assigner un kit"
+    delete: "Supprimer l'équipe"
+    no-kit: "Aucun kit"
+    current-kit: "Kit : {kit}"
+    lore-kit: "Kit : {kit}"
+    lore-members: "Membres : {count}"
+    lore-click: "Cliquer pour gérer"
+    member-click-remove: "Cliquer pour retirer"
+    type-team-name: "Entrez le nom de l'équipe (ou 'cancel'):"
+    type-player-name: "Entrez le nom du joueur (ou 'cancel'):"
+  kit:
+    title: "Sélectionner un kit"
+    remove: "Retirer le kit"

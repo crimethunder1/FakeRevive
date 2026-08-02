@@ -8,6 +8,9 @@ import com.fakerevive.disguise.PlayerDisguiseService;
 import com.fakerevive.kit.KitManager;
 import com.fakerevive.listener.FakeLeaveListener;
 import com.fakerevive.message.MessageService;
+import com.fakerevive.team.TeamGui;
+import com.fakerevive.team.TeamGuiListener;
+import com.fakerevive.team.TeamManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -40,12 +43,19 @@ public class FakeRevivePlugin extends JavaPlugin {
         KitManager kitManager = new KitManager(this);
         kitManager.loadKits();
 
+        TeamManager teamManager = new TeamManager(this);
+        teamManager.loadTeams();
+        TeamGui teamGui = new TeamGui(teamManager, kitManager, messageService);
+        TeamGuiListener teamGuiListener = new TeamGuiListener(this, teamManager, teamGui, kitManager,
+                messageService, FakeReviveCommand.PREFIX);
+        getServer().getPluginManager().registerEvents(teamGuiListener, this);
+
         FakeLeaveListener fakeLeaveListener =
                 new FakeLeaveListener(this, activeDisguiseRegistry, playerDisguiseService, messageService);
         getServer().getPluginManager().registerEvents(fakeLeaveListener, this);
         FakeReviveCommand fakeReviveCommand = new FakeReviveCommand(this, fakeLeaveListener, fakeNamePool,
-                activeDisguiseRegistry, playerDisguiseService, identityFetcher, kitManager, getLogger(),
-                messageService);
+                activeDisguiseRegistry, playerDisguiseService, identityFetcher, kitManager, teamManager, teamGui,
+                getLogger(), messageService);
         getCommand("fr").setExecutor(fakeReviveCommand);
         getCommand("fr").setTabCompleter(fakeReviveCommand);
         getLogger().info(messageService.get("plugin.enable"));

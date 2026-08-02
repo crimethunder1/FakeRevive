@@ -66,7 +66,7 @@ class ReviveCommandTest {
 
         assertTrue(handled);
         assertEquals(
-                PREFIX.append(Component.text("Benutzung: /fr revive <Spieler/@a> [Kit]", NamedTextColor.RED)),
+                PREFIX.append(Component.text("Benutzung: /fr revive <Spieler/@a/<Team>> [Kit]", NamedTextColor.RED)),
                 op.nextComponentMessage());
     }
 

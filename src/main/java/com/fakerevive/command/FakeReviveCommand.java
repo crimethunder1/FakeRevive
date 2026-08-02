@@ -8,6 +8,8 @@ import com.fakerevive.disguise.PlayerDisguiseService;
 import com.fakerevive.kit.KitManager;
 import com.fakerevive.listener.FakeLeaveListener;
 import com.fakerevive.message.MessageService;
+import com.fakerevive.team.TeamGui;
+import com.fakerevive.team.TeamManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -27,6 +29,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -46,15 +49,17 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
     private final PlayerDisguiseService playerDisguiseService;
     private final MojangIdentityFetcher identityFetcher;
     private final KitManager kitManager;
+    private final TeamManager teamManager;
+    private final TeamGui teamGui;
     private final Logger logger;
     private final MessageService messageService;
     private final AtomicBoolean replenishInProgress = new AtomicBoolean(false);
-    private static final Component PREFIX = Component.text("[FakeRevive] ", NamedTextColor.AQUA);
+    public static final Component PREFIX = Component.text("[FakeRevive] ", NamedTextColor.AQUA);
 
     public FakeReviveCommand(JavaPlugin plugin, FakeLeaveListener fakeLeaveListener, FakeNamePool fakeNamePool,
                               ActiveDisguiseRegistry activeDisguiseRegistry, PlayerDisguiseService playerDisguiseService,
-                              MojangIdentityFetcher identityFetcher, KitManager kitManager, Logger logger,
-                              MessageService messageService) {
+                              MojangIdentityFetcher identityFetcher, KitManager kitManager, TeamManager teamManager,
+                              TeamGui teamGui, Logger logger, MessageService messageService) {
         this.plugin = plugin;
         this.fakeLeaveListener = fakeLeaveListener;
         this.fakeNamePool = fakeNamePool;
@@ -62,6 +67,8 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         this.playerDisguiseService = playerDisguiseService;
         this.identityFetcher = identityFetcher;
         this.kitManager = kitManager;
+        this.teamManager = teamManager;
+        this.teamGui = teamGui;
         this.logger = logger;
         this.messageService = messageService;
     }
@@ -84,6 +91,8 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
                 return handleDisguise(sender, rest);
             case "kit":
                 return handleKit(sender, rest);
+            case "team":
+                return handleTeam(sender);
             case "reload":
                 return handleReload(sender);
             case "help":
@@ -101,7 +110,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 1) {
-            return filterByPrefix(List.of("revive", "undisguise", "disguise", "kit", "reload", "help"), args[0]);
+            return filterByPrefix(List.of("revive", "undisguise", "disguise", "kit", "team", "reload", "help"), args[0]);
         }
 
         return switch (args[0].toLowerCase()) {
@@ -117,6 +126,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         if (args.length == 2) {
             List<String> options = new ArrayList<>();
             options.add("@a");
+            options.addAll(teamManager.getTeamNames());
             Bukkit.getOnlinePlayers().forEach(p -> options.add(p.getName()));
             return filterByPrefix(options, args[1]);
         }
@@ -209,6 +219,31 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
             } else {
                 sender.sendMessage(PREFIX.append(Component.text(
                         messageService.get("commands.revive.success-multiple", "count", String.valueOf(revivedCount)),
+                        NamedTextColor.GREEN)));
+            }
+            return true;
+        }
+
+        if (teamManager.teamExists(args[0])) {
+            String teamKitName = kitName != null ? kitName : teamManager.getTeamKit(args[0]).orElse(null);
+            int revivedCount = 0;
+
+            for (UUID memberId : teamManager.getTeamMembers(args[0])) {
+                Player member = Bukkit.getPlayer(memberId);
+                if (member != null && fakeLeaveListener.isFakedOut(memberId)) {
+                    revivePlayer(member, spawnLocation, teamKitName);
+                    revivedCount++;
+                }
+            }
+
+            if (revivedCount == 0) {
+                sender.sendMessage(PREFIX.append(Component.text(
+                        messageService.get("commands.revive.no-team-targets", "team", args[0]),
+                        NamedTextColor.YELLOW)));
+            } else {
+                sender.sendMessage(PREFIX.append(Component.text(
+                        messageService.get("commands.revive.success-team",
+                                "count", String.valueOf(revivedCount), "team", args[0]),
                         NamedTextColor.GREEN)));
             }
             return true;
@@ -453,10 +488,21 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean handleTeam(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.team.players-only"), NamedTextColor.RED)));
+            return true;
+        }
+
+        teamGui.openMainMenu(player);
+        return true;
+    }
+
     private boolean handleReload(CommandSender sender) {
         plugin.reloadConfig();
         messageService.reload(plugin);
         kitManager.loadKits();
+        teamManager.reload();
         sender.sendMessage(PREFIX.append(Component.text(
                 messageService.get("commands.reload.success"), NamedTextColor.GREEN)));
         return true;
@@ -471,6 +517,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.kit-list"), NamedTextColor.YELLOW)));
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.kit-give"), NamedTextColor.YELLOW)));
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.kit-equip"), NamedTextColor.YELLOW)));
+        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.team"), NamedTextColor.YELLOW)));
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.reload"), NamedTextColor.YELLOW)));
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.help"), NamedTextColor.YELLOW)));
         return true;
