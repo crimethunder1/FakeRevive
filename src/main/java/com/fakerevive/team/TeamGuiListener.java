@@ -207,6 +207,21 @@ public class TeamGuiListener implements Listener {
                     Bukkit.getScheduler().runTask(plugin, () -> teamGui.openTeamMenu(player, teamName));
                 });
             }
+            case 47 -> {
+                int cleared = 0;
+                for (UUID memberId : teamManager.getTeamMembers(teamName)) {
+                    Player member = Bukkit.getPlayer(memberId);
+                    if (member == null) continue;
+                    member.getInventory().clear();
+                    member.getInventory().setArmorContents(null);
+                    member.getInventory().setItemInOffHand(null);
+                    member.updateInventory();
+                    cleared++;
+                }
+                sendMessage(player, "commands.team.cleared", NamedTextColor.YELLOW,
+                        "count", String.valueOf(cleared), "team", teamName);
+                teamGui.openTeamMenu(player, teamName);
+            }
             case 50 -> teamGui.openKitPicker(player, teamName);
             case 53 -> {
                 teamManager.deleteTeam(teamName);

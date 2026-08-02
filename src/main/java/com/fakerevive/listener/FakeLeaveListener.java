@@ -89,7 +89,7 @@ public class FakeLeaveListener implements Listener {
 
         for (Player nearby : player.getWorld().getPlayers()) {
             if (nearby.getLocation().distanceSquared(deathLocation) <= 48 * 48) {
-                nearby.playSound(deathLocation, Sound.ENTITY_WITHER_DEATH, 0.8f, 1.0f);
+                nearby.playSound(deathLocation, Sound.ENTITY_WITHER_SPAWN, 0.8f, 1.0f);
             }
         }
 

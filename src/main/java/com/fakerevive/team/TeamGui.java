@@ -90,6 +90,10 @@ public class TeamGui {
                         Component.text(messageService.get("gui.team.lore-add-player-hint"),
                                 NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
                 )));
+        inv.setItem(47, makeGlass(Material.ORANGE_STAINED_GLASS_PANE,
+                messageService.get("gui.team.clear"),
+                List.of(Component.text(messageService.get("gui.team.lore-clear"),
+                        NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))));
         inv.setItem(48, buildKitDisplayItem(teamName));
         inv.setItem(50, makeGlass(Material.CHEST,
                 messageService.get("gui.team.set-kit"),

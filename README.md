@@ -12,7 +12,7 @@ until their next death.
 
 * On death: the real death message is replaced by a "{name} left the game"
   broadcast to all players
-* A wither death sound plays for all players within 48 blocks of the death
+* A wither spawn sound plays for all players within 48 blocks of the death
 * Kill messages show fake names instead of real ones (configurable)
 * The player is held in spectator mode at their death location, awaiting
   revive
@@ -39,8 +39,8 @@ permission (default: `op`), except `/fr leave`, which only requires
 | `/fr kit save <name>` | Saves the current inventory (items, armor, offhand) as a kit. |
 | `/fr kit list` | Lists all saved kits. |
 | `/fr kit give <kit> <player>` | Gives a copy of the kit's items to a player's inventory (armor/offhand included); anything that doesn't fit drops on the ground. |
-| `/fr kit equip <kit> [player]` | Equips a kit directly into all of a player's slots (or your own), overwriting whatever was there. |
-| `/fr team` | Opens the team management GUI (create/delete teams, assign kits, add/remove members). |
+| `/fr kit equip <kit> [player\|team]` | Equips a kit directly into all of a player's slots (or your own), overwriting whatever was there. If a team name is given, equips every online member of that team. |
+| `/fr team` | Opens the team management GUI (create/delete teams, assign kits, add/remove members, clear members' inventories). |
 | `/fr leave` | Leaves your own team. |
 | `/fr reload` | Reloads `config.yml`, the message files, and all kits. |
 | `/fr help` | Shows all available commands. |

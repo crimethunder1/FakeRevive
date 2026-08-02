@@ -177,12 +177,17 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length >= 3) {
             return switch (args[1].toLowerCase()) {
-                case "give", "equip" -> {
-                    if (args.length == 3) {
-                        yield filterByPrefix(new ArrayList<>(kitManager.getKitNames()), args[2]);
-                    }
+                case "give" -> {
+                    if (args.length == 3) yield filterByPrefix(new ArrayList<>(kitManager.getKitNames()), args[2]);
+                    if (args.length == 4) yield onlinePlayerNames(args[3]);
+                    yield List.of();
+                }
+                case "equip" -> {
+                    if (args.length == 3) yield filterByPrefix(new ArrayList<>(kitManager.getKitNames()), args[2]);
                     if (args.length == 4) {
-                        yield onlinePlayerNames(args[3]);
+                        List<String> options = new ArrayList<>(teamManager.getTeamNames());
+                        Bukkit.getOnlinePlayers().forEach(p -> options.add(p.getName()));
+                        yield filterByPrefix(options, args[3]);
                     }
                     yield List.of();
                 }
@@ -559,6 +564,28 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         Player target;
         boolean equippingOther;
         if (args.length == 3) {
+            if (teamManager.teamExists(args[2])) {
+                int equipped = 0;
+                for (UUID memberId : teamManager.getTeamMembers(args[2])) {
+                    Player member = Bukkit.getPlayer(memberId);
+                    if (member == null) continue;
+                    if (plugin.getConfig().getBoolean("kits.clear-before-equip", false)) {
+                        PlayerInventory memberInventory = member.getInventory();
+                        memberInventory.clear();
+                        memberInventory.setArmorContents(null);
+                        memberInventory.setItemInOffHand(null);
+                    }
+                    if (kitManager.equipKit(name, member)) {
+                        equipped++;
+                    }
+                }
+                sender.sendMessage(PREFIX.append(Component.text(
+                        messageService.get("commands.kit.equip-team-success",
+                                "name", name, "count", String.valueOf(equipped), "team", args[2]),
+                        NamedTextColor.GREEN)));
+                return true;
+            }
+
             target = Bukkit.getPlayer(args[2]);
             equippingOther = true;
             if (target == null) {
