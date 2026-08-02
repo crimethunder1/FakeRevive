@@ -1,6 +1,7 @@
 commands:
   fr:
-    usage: "Usage: /fr <revive|undisguise|disguise|kit|team|reload|help>"
+    usage: "Usage: /fr <revive|undisguise|disguise|kit|team|leave|reload|help>"
+    no-permission: "You don't have permission to use this command."
   revive:
     usage: "Usage: /fr revive <player/@a/<team>> [kit]"
     not-found: "Player not found."
@@ -10,6 +11,8 @@ commands:
     success-single: "Successfully revived {player}!"
     success-multiple: "Successfully revived {count} players!"
     success-team: "Revived {count} players from team \"{team}\"."
+    players-only: "Only players can use this command."
+    fetching-profile: "Fetching profile for \"{name}\"..."
   undisguise:
     usage: "Usage: /fr undisguise [player]"
     not-found: "Player not found."
@@ -21,6 +24,8 @@ commands:
     not-found: "Player not found."
     pool-exhausted: "The fake name pool is exhausted."
     success: "{player} has been disguised as \"{name}\"."
+    name-not-found: "No Minecraft account found with name \"{name}\"."
+    success-multiple: "{count} players have been disguised."
   kit:
     usage: "Usage: /fr kit <save|list|give|equip>"
     players-only: "Only players can save kits."
@@ -50,6 +55,11 @@ commands:
     cancelled: "Action cancelled."
     players-added: "{count} player(s) added to team \"{team}\"."
     players-not-found: "Not found: {players}"
+  leave:
+    players-only: "Only players can use this command."
+    no-permission: "You don't have permission to do that."
+    no-team: "You are not in a team."
+    success: "You left team \"{team}\"."
   reload:
     success: "Config and kits reloaded."
   help:
@@ -62,6 +72,7 @@ commands:
     kit-give: "/fr kit give <kit> <player>: Give a kit to a player"
     kit-equip: "/fr kit equip <kit> [player]: Equip a kit"
     team: "/fr team: Manage teams"
+    leave: "/fr leave: Leave your current team"
     reload: "/fr reload: Reload config and kits"
     help: "/fr help: Show this help"
 disguise:
@@ -95,7 +106,7 @@ gui:
     lore-create: "Click and type the team name"
     lore-back: "Back to team overview"
     lore-add-player: "Type one or more player names"
-    lore-add-player-hint: "Example: Player1 Player2 Player3"
+    lore-add-player-hint: "Example: Player1 Player2 or @a @p @r @split"
     lore-set-kit: "Click to select a kit"
     lore-delete: "Removes the team and all its members"
     lore-current-kit: "Shows the currently assigned kit"

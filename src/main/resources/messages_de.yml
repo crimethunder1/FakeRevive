@@ -1,6 +1,7 @@
 commands:
   fr:
-    usage: "Benutzung: /fr <revive|undisguise|disguise|kit|team|reload|help>"
+    usage: "Benutzung: /fr <revive|undisguise|disguise|kit|team|leave|reload|help>"
+    no-permission: "Du hast keine Berechtigung für diesen Befehl."
   revive:
     usage: "Benutzung: /fr revive <Spieler/@a/<Team>> [Kit]"
     not-found: "Dieser Spieler wurde nicht gefunden."
@@ -10,6 +11,8 @@ commands:
     success-single: "Du hast {player} erfolgreich wiederbelebt!"
     success-multiple: "Es wurden erfolgreich {count} Spieler wiederbelebt!"
     success-team: "Es wurden {count} Spieler aus Team \"{team}\" wiederbelebt!"
+    players-only: "Nur Spieler können diesen Befehl ausführen."
+    fetching-profile: "Profil für \"{name}\" wird abgerufen..."
   undisguise:
     usage: "Benutzung: /fr undisguise [Spieler]"
     not-found: "Dieser Spieler wurde nicht gefunden."
@@ -21,6 +24,8 @@ commands:
     not-found: "Dieser Spieler wurde nicht gefunden."
     pool-exhausted: "Der Fake-Namen-Pool ist erschöpft."
     success: "{player} wurde als \"{name}\" verkleidet."
+    name-not-found: "Kein Minecraft-Account mit dem Namen \"{name}\" gefunden."
+    success-multiple: "{count} Spieler wurden verkleidet."
   kit:
     usage: "Benutzung: /fr kit <save|list|give|equip>"
     players-only: "Nur Spieler können Kits speichern."
@@ -50,6 +55,11 @@ commands:
     cancelled: "Aktion abgebrochen."
     players-added: "{count} Spieler wurden zu Team \"{team}\" hinzugefügt."
     players-not-found: "Nicht gefunden: {players}"
+  leave:
+    players-only: "Nur Spieler können diesen Befehl ausführen."
+    no-permission: "Dafür hast du keine Berechtigung."
+    no-team: "Du bist in keinem Team."
+    success: "Du hast Team \"{team}\" verlassen."
   reload:
     success: "Config und Kits wurden neu geladen."
   help:
@@ -62,6 +72,7 @@ commands:
     kit-give: "/fr kit give <Kit> <Spieler>: Kit an Spieler geben"
     kit-equip: "/fr kit equip <Kit> [Spieler]: Kit ausrüsten"
     team: "/fr team: Teams verwalten"
+    leave: "/fr leave: Eigenes Team verlassen"
     reload: "/fr reload: Config und Kits neu laden"
     help: "/fr help: Hilfe anzeigen"
 disguise:
@@ -95,7 +106,7 @@ gui:
     lore-create: "Klick und gib den Teamnamen ein"
     lore-back: "Zurück zur Teamübersicht"
     lore-add-player: "Gib einen oder mehrere Spielernamen ein"
-    lore-add-player-hint: "Beispiel: Spieler1 Spieler2 Spieler3"
+    lore-add-player-hint: "Beispiel: Spieler1 Spieler2 oder @a @p @r @split"
     lore-set-kit: "Klick um ein Kit auszuwählen"
     lore-delete: "Team und alle Mitglieder werden entfernt"
     lore-current-kit: "Zeigt das aktuell zugewiesene Kit"

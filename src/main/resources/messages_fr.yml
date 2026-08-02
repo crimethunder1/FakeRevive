@@ -1,6 +1,7 @@
 commands:
   fr:
-    usage: "Utilisation : /fr <revive|undisguise|disguise|kit|team|reload|help>"
+    usage: "Utilisation : /fr <revive|undisguise|disguise|kit|team|leave|reload|help>"
+    no-permission: "Vous n'avez pas la permission d'utiliser cette commande."
   revive:
     usage: "Utilisation : /fr revive <joueur/@a/<équipe>> [kit]"
     not-found: "Joueur introuvable."
@@ -10,6 +11,8 @@ commands:
     success-single: "{player} a été réanimé avec succès !"
     success-multiple: "{count} joueurs ont été réanimés avec succès !"
     success-team: "{count} joueurs de l'équipe \"{team}\" ont été réanimés."
+    players-only: "Seuls les joueurs peuvent utiliser cette commande."
+    fetching-profile: "Récupération du profil pour \"{name}\"..."
   undisguise:
     usage: "Utilisation : /fr undisguise [joueur]"
     not-found: "Joueur introuvable."
@@ -21,6 +24,8 @@ commands:
     not-found: "Joueur introuvable."
     pool-exhausted: "Le pool de faux noms est épuisé."
     success: "{player} a été déguisé en \"{name}\"."
+    name-not-found: "Aucun compte Minecraft trouvé avec le nom \"{name}\"."
+    success-multiple: "{count} joueurs ont été déguisés."
   kit:
     usage: "Utilisation : /fr kit <save|list|give|equip>"
     players-only: "Seuls les joueurs peuvent sauvegarder des kits."
@@ -50,6 +55,11 @@ commands:
     cancelled: "Action annulée."
     players-added: "{count} joueur(s) ajouté(s) à l'équipe \"{team}\"."
     players-not-found: "Introuvable: {players}"
+  leave:
+    players-only: "Seuls les joueurs peuvent utiliser cette commande."
+    no-permission: "Vous n'avez pas la permission de faire cela."
+    no-team: "Vous n'êtes dans aucune équipe."
+    success: "Vous avez quitté l'équipe \"{team}\"."
   reload:
     success: "Config et kits rechargés."
   help:
@@ -62,6 +72,7 @@ commands:
     kit-give: "/fr kit give <kit> <joueur>: Donner un kit à un joueur"
     kit-equip: "/fr kit equip <kit> [joueur]: Équiper un kit"
     team: "/fr team: Gérer les équipes"
+    leave: "/fr leave: Quitter votre équipe actuelle"
     reload: "/fr reload: Recharger la config et les kits"
     help: "/fr help: Afficher l'aide"
 disguise:
@@ -95,7 +106,7 @@ gui:
     lore-create: "Clique et entre le nom de l'équipe"
     lore-back: "Retour à la liste des équipes"
     lore-add-player: "Entre un ou plusieurs noms de joueurs"
-    lore-add-player-hint: "Exemple: Joueur1 Joueur2 Joueur3"
+    lore-add-player-hint: "Exemple : Joueur1 Joueur2 ou @a @p @r @split"
     lore-set-kit: "Clique pour sélectionner un kit"
     lore-delete: "Supprime l'équipe et tous ses membres"
     lore-current-kit: "Affiche le kit actuellement assigné"

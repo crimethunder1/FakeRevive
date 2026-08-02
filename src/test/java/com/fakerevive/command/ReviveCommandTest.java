@@ -56,7 +56,7 @@ class ReviveCommandTest {
 
         assertTrue(handled);
         assertEquals(
-                Component.text("You don't have permission to use this command.", NamedTextColor.RED),
+                Component.text("Du hast keine Berechtigung für diesen Befehl.", NamedTextColor.RED),
                 guest.nextComponentMessage());
     }
 

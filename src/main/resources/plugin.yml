@@ -7,11 +7,12 @@ description: On death, fakes a leave message and disguises players on revive.
 commands:
   fr:
     description: Main command for FakeRevive.
-    permission: fakerevive.admin
-    permission-message: "§cYou don't have permission to use this command."
-    usage: /fr <revive|undisguise|disguise|kit|team|reload|help>
+    usage: /fr <revive|undisguise|disguise|kit|team|leave|reload|help>
     aliases: [fakerevive]
 permissions:
   fakerevive.admin:
     description: Grants access to all /fr subcommands.
     default: op
+  fakerevive.leave:
+    description: Allows players to leave their team with /fr leave.
+    default: true

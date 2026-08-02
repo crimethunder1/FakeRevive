@@ -16,8 +16,10 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -37,6 +39,7 @@ public class TeamGuiListener implements Listener {
 
     // Players currently waiting to type a response in chat, keyed by UUID.
     private final Map<UUID, Consumer<String>> pendingPrompts = new ConcurrentHashMap<>();
+    private final Random random = new Random();
 
     public TeamGuiListener(JavaPlugin plugin, TeamManager teamManager, TeamGui teamGui,
                            KitManager kitManager, MessageService messageService, Component prefix) {
@@ -118,11 +121,67 @@ public class TeamGuiListener implements Listener {
             case 46 -> {
                 player.closeInventory();
                 promptChat(player, messageService.get("gui.team.type-player-name"), input -> {
-                    if (input.equalsIgnoreCase("cancel")) {
+                    String trimmed = input.trim();
+
+                    if (trimmed.equalsIgnoreCase("cancel")) {
                         sendMessage(player, "commands.team.cancelled", NamedTextColor.YELLOW);
                         return;
                     }
-                    String[] names = input.trim().split("\\s+");
+
+                    if (trimmed.equalsIgnoreCase("@a")) {
+                        int added = 0;
+                        for (Player online : Bukkit.getOnlinePlayers()) {
+                            teamManager.addPlayer(online.getUniqueId(), teamName);
+                            added++;
+                        }
+                        sendMessage(player, "commands.team.players-added", NamedTextColor.GREEN,
+                                "count", String.valueOf(added), "team", teamName);
+                        Bukkit.getScheduler().runTask(plugin, () -> teamGui.openTeamMenu(player, teamName));
+                        return;
+                    }
+
+                    if (trimmed.equalsIgnoreCase("@p")) {
+                        int added = 0;
+                        for (Player nearby : player.getWorld().getPlayers()) {
+                            if (nearby.getLocation().distanceSquared(player.getLocation()) <= 16 * 16) {
+                                teamManager.addPlayer(nearby.getUniqueId(), teamName);
+                                added++;
+                            }
+                        }
+                        sendMessage(player, "commands.team.players-added", NamedTextColor.GREEN,
+                                "count", String.valueOf(added), "team", teamName);
+                        Bukkit.getScheduler().runTask(plugin, () -> teamGui.openTeamMenu(player, teamName));
+                        return;
+                    }
+
+                    if (trimmed.equalsIgnoreCase("@r")) {
+                        List<Player> online = new ArrayList<>(Bukkit.getOnlinePlayers());
+                        if (online.isEmpty()) {
+                            sendMessage(player, "commands.team.player-not-found", NamedTextColor.RED, "player", "@r");
+                            return;
+                        }
+                        Player randomPlayer = online.get(random.nextInt(online.size()));
+                        teamManager.addPlayer(randomPlayer.getUniqueId(), teamName);
+                        sendMessage(player, "commands.team.player-added", NamedTextColor.GREEN,
+                                "player", randomPlayer.getName(), "team", teamName);
+                        Bukkit.getScheduler().runTask(plugin, () -> teamGui.openTeamMenu(player, teamName));
+                        return;
+                    }
+
+                    if (trimmed.equalsIgnoreCase("@split")) {
+                        List<Player> online = new ArrayList<>(Bukkit.getOnlinePlayers());
+                        Collections.shuffle(online);
+                        int half = online.size() / 2;
+                        for (int i = 0; i < half; i++) {
+                            teamManager.addPlayer(online.get(i).getUniqueId(), teamName);
+                        }
+                        sendMessage(player, "commands.team.players-added", NamedTextColor.GREEN,
+                                "count", String.valueOf(half), "team", teamName);
+                        Bukkit.getScheduler().runTask(plugin, () -> teamGui.openTeamMenu(player, teamName));
+                        return;
+                    }
+
+                    String[] names = trimmed.split("\\s+");
                     int added = 0;
                     List<String> notFound = new ArrayList<>();
 

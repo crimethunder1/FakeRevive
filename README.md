@@ -25,20 +25,30 @@ until their next death.
 
 ## Commands
 
-All commands are subcommands of `/fr` (alias `/fakerevive`) and require the
-`fakerevive.admin` permission (default: `op`).
+All subcommands of `/fr` (alias `/fakerevive`) require the `fakerevive.admin`
+permission (default: `op`), except `/fr leave`, which only requires
+`fakerevive.leave` (default: everyone).
 
 | Command | Description |
 |---|---|
-| `/fr revive <player\|@a> [kit]` | Revives one faked-out player, or all of them with `@a`. If a kit name is given, the player is equipped with it. |
+| `/fr revive <player\|@a\|@p\|@r\|team> [kit]` | Revives one faked-out player, all of them (`@a`), nearby ones (`@p`), a random one (`@r`), or a whole team. If a kit name is given, the player is equipped with it. |
+| `/fr revive <player> <name> [kit]` | Revives the player under a specific, real Minecraft account's name and skin instead of a randomly generated one. |
 | `/fr undisguise [player]` | Removes the disguise from the given player, or from yourself if no player is specified. |
-| `/fr disguise <player> [kit]` | Manually assigns a random disguise to a player, optionally equipping a kit at the same time. |
+| `/fr disguise <player\|@p\|@r> [kit]` | Manually assigns a random disguise to a player (or nearby/random players), optionally equipping a kit at the same time. |
+| `/fr disguise <player> <name> [kit]` | Disguises the player as a specific, real Minecraft account instead of a randomly generated one. |
 | `/fr kit save <name>` | Saves the current inventory (items, armor, offhand) as a kit. |
 | `/fr kit list` | Lists all saved kits. |
 | `/fr kit give <kit> <player>` | Gives a copy of the kit's items to a player's inventory (armor/offhand included); anything that doesn't fit drops on the ground. |
 | `/fr kit equip <kit> [player]` | Equips a kit directly into all of a player's slots (or your own), overwriting whatever was there. |
+| `/fr team` | Opens the team management GUI (create/delete teams, assign kits, add/remove members). |
+| `/fr leave` | Leaves your own team. |
 | `/fr reload` | Reloads `config.yml`, the message files, and all kits. |
 | `/fr help` | Shows all available commands. |
+
+When adding players to a team from the GUI, you can type one or more names,
+or a selector: `@a` (everyone online), `@p` (players near the team manager),
+`@r` (one random online player), or `@split` (splits everyone online
+roughly in half into the team).
 
 ## Configuration
 

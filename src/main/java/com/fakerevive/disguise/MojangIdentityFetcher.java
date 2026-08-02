@@ -71,6 +71,26 @@ public class MojangIdentityFetcher {
         return Optional.empty();
     }
 
+    /**
+     * Fetches the current name and skin for an existing Minecraft account by username, so a
+     * player can be given a specific real identity instead of a randomly generated one.
+     * @return the account's identity, or empty if no account exists under that name or its skin
+     *         could not be retrieved.
+     */
+    public Optional<FakeIdentity> fetchIdentityByName(String name) {
+        Optional<HttpResponse<String>> profileResponse = getWithRetry(NAME_LOOKUP_URI_PREFIX + name);
+        if (profileResponse.isEmpty() || profileResponse.get().statusCode() != 200) {
+            return Optional.empty();
+        }
+
+        Optional<String> uuid = extractJsonField(profileResponse.get().body(), "id");
+        if (uuid.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return fetchSkinTexture(uuid.get()).map(texture -> new FakeIdentity(name, texture[0], texture[1]));
+    }
+
     private Optional<FakeIdentity> findSkinDonor(String candidateName, int maxAttempts) {
         for (int attempt = 0; attempt < maxAttempts; attempt++) {
             String donorCandidate = randomCandidateName();

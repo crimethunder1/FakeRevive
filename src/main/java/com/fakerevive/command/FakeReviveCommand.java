@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -36,11 +37,12 @@ import java.util.stream.Collectors;
 
 /**
  * Handles all {@code /fr} subcommands: revive, undisguise, disguise, kit (save/list/give/equip),
- * reload, and help. Also provides context-aware tab completion for all subcommands.
+ * team, leave, reload, and help. Also provides context-aware tab completion for all subcommands.
  */
 public class FakeReviveCommand implements CommandExecutor, TabCompleter {
 
     private static final int REPLENISH_MAX_ATTEMPTS = 25;
+    private static final int NEARBY_RADIUS_SQUARED = 16 * 16;
 
     private final JavaPlugin plugin;
     private final FakeLeaveListener fakeLeaveListener;
@@ -54,6 +56,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
     private final Logger logger;
     private final MessageService messageService;
     private final AtomicBoolean replenishInProgress = new AtomicBoolean(false);
+    private final Random random = new Random();
     public static final Component PREFIX = Component.text("[FakeRevive] ", NamedTextColor.AQUA);
 
     public FakeReviveCommand(JavaPlugin plugin, FakeLeaveListener fakeLeaveListener, FakeNamePool fakeNamePool,
@@ -77,6 +80,15 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
             sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.fr.usage"), NamedTextColor.RED)));
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("leave")) {
+            return handleLeave(sender);
+        }
+
+        if (!sender.hasPermission("fakerevive.admin")) {
+            sender.sendMessage(Component.text(messageService.get("commands.fr.no-permission"), NamedTextColor.RED));
             return true;
         }
 
@@ -110,7 +122,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 1) {
-            return filterByPrefix(List.of("revive", "undisguise", "disguise", "kit", "team", "reload", "help"), args[0]);
+            return filterByPrefix(List.of("revive", "undisguise", "disguise", "kit", "team", "leave", "reload", "help"), args[0]);
         }
 
         return switch (args[0].toLowerCase()) {
@@ -126,6 +138,8 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         if (args.length == 2) {
             List<String> options = new ArrayList<>();
             options.add("@a");
+            options.add("@p");
+            options.add("@r");
             options.addAll(teamManager.getTeamNames());
             Bukkit.getOnlinePlayers().forEach(p -> options.add(p.getName()));
             return filterByPrefix(options, args[1]);
@@ -145,7 +159,11 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
 
     private List<String> completeDisguise(String[] args) {
         if (args.length == 2) {
-            return onlinePlayerNames(args[1]);
+            List<String> options = new ArrayList<>();
+            options.add("@p");
+            options.add("@r");
+            Bukkit.getOnlinePlayers().forEach(p -> options.add(p.getName()));
+            return filterByPrefix(options, args[1]);
         }
         if (args.length == 3) {
             return filterByPrefix(new ArrayList<>(kitManager.getKitNames()), args[2]);
@@ -188,12 +206,23 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleRevive(CommandSender sender, String[] args) {
-        if (args.length < 1 || args.length > 2) {
+        if (args.length < 1 || args.length > 3) {
             sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.revive.usage"), NamedTextColor.RED)));
             return true;
         }
 
-        String kitName = args.length == 2 ? args[1] : null;
+        String kitName = null;
+        String customName = null;
+        if (args.length == 2) {
+            if (kitManager.getKitNames().contains(args[1])) {
+                kitName = args[1];
+            } else {
+                customName = args[1];
+            }
+        } else if (args.length == 3) {
+            customName = args[1];
+            kitName = args[2];
+        }
 
         Location spawnLocation;
         if (sender instanceof Player) {
@@ -207,7 +236,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
 
             for (Player target : Bukkit.getOnlinePlayers()) {
                 if (fakeLeaveListener.isFakedOut(target.getUniqueId())) {
-                    revivePlayer(target, spawnLocation, kitName);
+                    revivePlayer(target, spawnLocation, kitName, null);
                     revivedCount++;
                 }
             }
@@ -224,6 +253,52 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if (args[0].equalsIgnoreCase("@p")) {
+            if (!(sender instanceof Player senderPlayer)) {
+                sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.revive.players-only"), NamedTextColor.RED)));
+                return true;
+            }
+
+            int revivedCount = 0;
+            for (Player target : senderPlayer.getWorld().getPlayers()) {
+                if (target.getLocation().distanceSquared(senderPlayer.getLocation()) <= NEARBY_RADIUS_SQUARED
+                        && fakeLeaveListener.isFakedOut(target.getUniqueId())) {
+                    revivePlayer(target, spawnLocation, kitName, null);
+                    revivedCount++;
+                }
+            }
+
+            if (revivedCount == 0) {
+                sender.sendMessage(PREFIX.append(Component.text(
+                        messageService.get("commands.revive.no-targets"),
+                        NamedTextColor.YELLOW)));
+            } else {
+                sender.sendMessage(PREFIX.append(Component.text(
+                        messageService.get("commands.revive.success-multiple", "count", String.valueOf(revivedCount)),
+                        NamedTextColor.GREEN)));
+            }
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("@r")) {
+            List<Player> fakedOutPlayers = Bukkit.getOnlinePlayers().stream()
+                    .filter(p -> fakeLeaveListener.isFakedOut(p.getUniqueId()))
+                    .collect(Collectors.toList());
+
+            if (fakedOutPlayers.isEmpty()) {
+                sender.sendMessage(PREFIX.append(Component.text(
+                        messageService.get("commands.revive.no-targets"), NamedTextColor.YELLOW)));
+                return true;
+            }
+
+            Player target = fakedOutPlayers.get(random.nextInt(fakedOutPlayers.size()));
+            revivePlayer(target, spawnLocation, kitName, null);
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.revive.success-single", "player", target.getName()),
+                    NamedTextColor.GREEN)));
+            return true;
+        }
+
         if (teamManager.teamExists(args[0])) {
             String teamKitName = kitName != null ? kitName : teamManager.getTeamKit(args[0]).orElse(null);
             int revivedCount = 0;
@@ -231,7 +306,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
             for (UUID memberId : teamManager.getTeamMembers(args[0])) {
                 Player member = Bukkit.getPlayer(memberId);
                 if (member != null && fakeLeaveListener.isFakedOut(memberId)) {
-                    revivePlayer(member, spawnLocation, teamKitName);
+                    revivePlayer(member, spawnLocation, teamKitName, null);
                     revivedCount++;
                 }
             }
@@ -261,10 +336,17 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        revivePlayer(target, spawnLocation, kitName);
-        sender.sendMessage(PREFIX.append(Component.text(
-                messageService.get("commands.revive.success-single", "player", target.getName()),
-                NamedTextColor.GREEN)));
+        if (customName != null) {
+            revivePlayerWithCustomName(target, spawnLocation, customName, kitName, sender);
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.revive.fetching-profile", "name", customName),
+                    NamedTextColor.GRAY)));
+        } else {
+            revivePlayer(target, spawnLocation, kitName, null);
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.revive.success-single", "player", target.getName()),
+                    NamedTextColor.GREEN)));
+        }
         return true;
     }
 
@@ -303,8 +385,52 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleDisguise(CommandSender sender, String[] args) {
-        if (args.length < 1 || args.length > 2) {
+        if (args.length < 1 || args.length > 3) {
             sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.disguise.usage"), NamedTextColor.RED)));
+            return true;
+        }
+
+        String kitName = null;
+        String customName = null;
+        if (args.length == 2) {
+            if (kitManager.getKitNames().contains(args[1])) {
+                kitName = args[1];
+            } else {
+                customName = args[1];
+            }
+        } else if (args.length == 3) {
+            customName = args[1];
+            kitName = args[2];
+        }
+
+        if (args[0].equalsIgnoreCase("@p")) {
+            if (!(sender instanceof Player senderPlayer)) {
+                sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.revive.players-only"), NamedTextColor.RED)));
+                return true;
+            }
+
+            int count = 0;
+            for (Player nearby : senderPlayer.getWorld().getPlayers()) {
+                if (nearby.getLocation().distanceSquared(senderPlayer.getLocation()) <= NEARBY_RADIUS_SQUARED) {
+                    disguiseWithRandomIdentity(nearby, kitName, sender);
+                    count++;
+                }
+            }
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.disguise.success-multiple", "count", String.valueOf(count)),
+                    NamedTextColor.GREEN)));
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("@r")) {
+            List<Player> online = new ArrayList<>(Bukkit.getOnlinePlayers());
+            if (online.isEmpty()) {
+                sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.disguise.not-found"), NamedTextColor.RED)));
+                return true;
+            }
+
+            Player target = online.get(random.nextInt(online.size()));
+            disguiseWithRandomIdentity(target, kitName, sender);
             return true;
         }
 
@@ -314,45 +440,30 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        String kitName = args.length == 2 ? args[1] : null;
+        if (customName != null) {
+            String finalCustomName = customName;
+            String finalKitName = kitName;
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.revive.fetching-profile", "name", customName),
+                    NamedTextColor.GRAY)));
+            activeDisguiseRegistry.clear(target.getUniqueId());
 
-        activeDisguiseRegistry.clear(target.getUniqueId());
-
-        Optional<FakeIdentity> identity = fakeNamePool.assignRandomIdentity();
-        if (identity.isEmpty()) {
-            sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.disguise.pool-exhausted"), NamedTextColor.RED)));
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                Optional<FakeIdentity> identity = identityFetcher.fetchIdentityByName(finalCustomName);
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    if (identity.isEmpty()) {
+                        sender.sendMessage(PREFIX.append(Component.text(
+                                messageService.get("commands.disguise.name-not-found", "name", finalCustomName),
+                                NamedTextColor.RED)));
+                        return;
+                    }
+                    applyDisguiseIdentity(target, identity.get(), finalKitName, sender);
+                });
+            });
             return true;
         }
 
-        FakeIdentity fakeIdentity = identity.get();
-        activeDisguiseRegistry.assign(target.getUniqueId(), fakeIdentity);
-        playerDisguiseService.apply(target, fakeIdentity);
-
-        String fakeName = fakeIdentity.name();
-        target.sendMessage(PREFIX.append(Component.text(
-                messageService.get("disguise.applied", "name", fakeName), NamedTextColor.YELLOW)));
-        target.sendActionBar(PREFIX.append(Component.text(
-                messageService.get("disguise.applied-actionbar", "name", fakeName), NamedTextColor.YELLOW)));
-
-        if (!sender.equals(target)) {
-            sender.sendMessage(PREFIX.append(Component.text(
-                    messageService.get("commands.disguise.success", "player", target.getName(), "name", fakeName),
-                    NamedTextColor.GREEN)));
-        }
-
-        if (kitName != null) {
-            PlayerInventory inventory = target.getInventory();
-            inventory.clear();
-            inventory.setArmorContents(null);
-            inventory.setItemInOffHand(null);
-            target.updateInventory();
-            if (!kitManager.equipKit(kitName, target)) {
-                logger.warning("Kit \"" + kitName + "\" not found — player " + target.getName()
-                        + " disguised without a kit.");
-            }
-        }
-
-        replenishPool();
+        disguiseWithRandomIdentity(target, kitName, sender);
         return true;
     }
 
@@ -498,6 +609,30 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean handleLeave(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.leave.players-only"), NamedTextColor.RED)));
+            return true;
+        }
+
+        if (!player.hasPermission("fakerevive.leave")) {
+            player.sendMessage(PREFIX.append(Component.text(messageService.get("commands.leave.no-permission"), NamedTextColor.RED)));
+            return true;
+        }
+
+        Optional<String> team = teamManager.getPlayerTeam(player.getUniqueId());
+        if (team.isEmpty()) {
+            player.sendMessage(PREFIX.append(Component.text(messageService.get("commands.leave.no-team"), NamedTextColor.RED)));
+            return true;
+        }
+
+        teamManager.removePlayer(player.getUniqueId());
+        player.sendMessage(PREFIX.append(Component.text(
+                messageService.get("commands.leave.success", "team", team.get()),
+                NamedTextColor.YELLOW)));
+        return true;
+    }
+
     private boolean handleReload(CommandSender sender) {
         plugin.reloadConfig();
         messageService.reload(plugin);
@@ -518,17 +653,21 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.kit-give"), NamedTextColor.YELLOW)));
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.kit-equip"), NamedTextColor.YELLOW)));
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.team"), NamedTextColor.YELLOW)));
+        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.leave"), NamedTextColor.YELLOW)));
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.reload"), NamedTextColor.YELLOW)));
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.help"), NamedTextColor.YELLOW)));
         return true;
     }
 
-    private void revivePlayer(Player player, Location location, @Nullable String kitName) {
+    private void revivePlayer(Player player, Location location, @Nullable String kitName, @Nullable FakeIdentity forcedIdentity) {
         fakeLeaveListener.clearFakedOut(player.getUniqueId());
         player.setGameMode(GameMode.SURVIVAL);
         player.teleport(location);
 
-        Optional<FakeIdentity> identity = fakeNamePool.assignRandomIdentity();
+        Optional<FakeIdentity> identity = forcedIdentity != null
+                ? Optional.of(forcedIdentity)
+                : fakeNamePool.assignRandomIdentity();
+
         if (identity.isPresent()) {
             FakeIdentity fakeIdentity = identity.get();
             activeDisguiseRegistry.assign(player.getUniqueId(), fakeIdentity);
@@ -540,21 +679,90 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
             player.sendActionBar(PREFIX.append(Component.text(
                     messageService.get("disguise.applied-actionbar", "name", fakeName), NamedTextColor.YELLOW)));
 
-            replenishPool();
+            if (forcedIdentity == null) {
+                replenishPool();
+            }
         } else {
             logger.warning(messageService.get("events.pool-exhausted", "player", player.getName()));
         }
 
         if (kitName != null) {
-            PlayerInventory inventory = player.getInventory();
-            inventory.clear();
-            inventory.setArmorContents(null);
-            inventory.setItemInOffHand(null);
-            player.updateInventory();
-            if (!kitManager.equipKit(kitName, player)) {
-                logger.warning("Kit \"" + kitName + "\" not found — player " + player.getName()
-                        + " was revived without a kit.");
-            }
+            applyKit(player, kitName);
+        }
+    }
+
+    /**
+     * Revives the player immediately, then applies a real Minecraft account's name and skin once
+     * fetched from Mojang, instead of a randomly generated identity. The fetch runs off the main
+     * thread so the player isn't left waiting in spectator mode for the network round trip;
+     * {@code resultTarget} is notified once it completes, whether it succeeded or not.
+     */
+    private void revivePlayerWithCustomName(Player player, Location location, String minecraftName,
+                                             @Nullable String kitName, CommandSender resultTarget) {
+        fakeLeaveListener.clearFakedOut(player.getUniqueId());
+        player.setGameMode(GameMode.SURVIVAL);
+        player.teleport(location);
+
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            Optional<FakeIdentity> identity = identityFetcher.fetchIdentityByName(minecraftName);
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                if (identity.isEmpty()) {
+                    resultTarget.sendMessage(PREFIX.append(Component.text(
+                            messageService.get("commands.disguise.name-not-found", "name", minecraftName),
+                            NamedTextColor.RED)));
+                    return;
+                }
+                revivePlayer(player, location, kitName, identity.get());
+                resultTarget.sendMessage(PREFIX.append(Component.text(
+                        messageService.get("commands.revive.success-single", "player", player.getName()),
+                        NamedTextColor.GREEN)));
+            });
+        });
+    }
+
+    private void disguiseWithRandomIdentity(Player target, @Nullable String kitName, CommandSender resultSender) {
+        activeDisguiseRegistry.clear(target.getUniqueId());
+        Optional<FakeIdentity> identity = fakeNamePool.assignRandomIdentity();
+        if (identity.isEmpty()) {
+            resultSender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.disguise.pool-exhausted"), NamedTextColor.RED)));
+            logger.warning(messageService.get("events.pool-exhausted", "player", target.getName()));
+            return;
+        }
+
+        applyDisguiseIdentity(target, identity.get(), kitName, resultSender);
+        replenishPool();
+    }
+
+    private void applyDisguiseIdentity(Player target, FakeIdentity fakeIdentity, @Nullable String kitName, CommandSender resultSender) {
+        activeDisguiseRegistry.assign(target.getUniqueId(), fakeIdentity);
+        playerDisguiseService.apply(target, fakeIdentity);
+
+        String fakeName = fakeIdentity.name();
+        target.sendMessage(PREFIX.append(Component.text(
+                messageService.get("disguise.applied", "name", fakeName), NamedTextColor.YELLOW)));
+        target.sendActionBar(PREFIX.append(Component.text(
+                messageService.get("disguise.applied-actionbar", "name", fakeName), NamedTextColor.YELLOW)));
+
+        if (!resultSender.equals(target)) {
+            resultSender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.disguise.success", "player", target.getName(), "name", fakeName),
+                    NamedTextColor.GREEN)));
+        }
+
+        if (kitName != null) {
+            applyKit(target, kitName);
+        }
+    }
+
+    private void applyKit(Player player, String kitName) {
+        PlayerInventory inventory = player.getInventory();
+        inventory.clear();
+        inventory.setArmorContents(null);
+        inventory.setItemInOffHand(null);
+        player.updateInventory();
+        if (!kitManager.equipKit(kitName, player)) {
+            logger.warning("Kit \"" + kitName + "\" not found for player " + player.getName());
         }
     }
 
