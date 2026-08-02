@@ -48,6 +48,8 @@ commands:
     kit-set: "Kit \"{kit}\" wurde Team \"{team}\" zugewiesen."
     kit-removed: "Das Kit von Team \"{team}\" wurde entfernt."
     cancelled: "Aktion abgebrochen."
+    players-added: "{count} Spieler wurden zu Team \"{team}\" hinzugefügt."
+    players-not-found: "Nicht gefunden: {players}"
   reload:
     success: "Config und Kits wurden neu geladen."
   help:
@@ -59,7 +61,7 @@ commands:
     kit-list: "/fr kit list: Alle Kits anzeigen"
     kit-give: "/fr kit give <Kit> <Spieler>: Kit an Spieler geben"
     kit-equip: "/fr kit equip <Kit> [Spieler]: Kit ausrüsten"
-    team: "/fr team: Team-Manager öffnen"
+    team: "/fr team: Teams verwalten"
     reload: "/fr reload: Config und Kits neu laden"
     help: "/fr help: Hilfe anzeigen"
 disguise:
@@ -89,7 +91,16 @@ gui:
     lore-click: "Klicken zum Verwalten"
     member-click-remove: "Klicken zum Entfernen"
     type-team-name: "Gib den Namen des neuen Teams ein (oder 'cancel'):"
-    type-player-name: "Gib den Spielernamen ein (oder 'cancel'):"
+    type-player-name: "Gib Spielernamen ein, getrennt durch Leerzeichen (oder 'cancel'):"
+    lore-create: "Klick und gib den Teamnamen ein"
+    lore-back: "Zurück zur Teamübersicht"
+    lore-add-player: "Gib einen oder mehrere Spielernamen ein"
+    lore-add-player-hint: "Beispiel: Spieler1 Spieler2 Spieler3"
+    lore-set-kit: "Klick um ein Kit auszuwählen"
+    lore-delete: "Team und alle Mitglieder werden entfernt"
+    lore-current-kit: "Zeigt das aktuell zugewiesene Kit"
   kit:
     title: "Kit auswählen"
     remove: "Kein Kit zuweisen"
+    lore-remove: "Entfernt das zugewiesene Kit vom Team"
+    lore-select: "Klick um dieses Kit zuzuweisen"

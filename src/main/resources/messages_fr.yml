@@ -48,6 +48,8 @@ commands:
     kit-set: "Le kit \"{kit}\" a été assigné à l'équipe \"{team}\"."
     kit-removed: "Kit retiré de l'équipe \"{team}\"."
     cancelled: "Action annulée."
+    players-added: "{count} joueur(s) ajouté(s) à l'équipe \"{team}\"."
+    players-not-found: "Introuvable: {players}"
   reload:
     success: "Config et kits rechargés."
   help:
@@ -59,7 +61,7 @@ commands:
     kit-list: "/fr kit list: Afficher tous les kits"
     kit-give: "/fr kit give <kit> <joueur>: Donner un kit à un joueur"
     kit-equip: "/fr kit equip <kit> [joueur]: Équiper un kit"
-    team: "/fr team: Ouvrir le gestionnaire d'équipes"
+    team: "/fr team: Gérer les équipes"
     reload: "/fr reload: Recharger la config et les kits"
     help: "/fr help: Afficher l'aide"
 disguise:
@@ -89,7 +91,16 @@ gui:
     lore-click: "Cliquer pour gérer"
     member-click-remove: "Cliquer pour retirer"
     type-team-name: "Entrez le nom de l'équipe (ou 'cancel'):"
-    type-player-name: "Entrez le nom du joueur (ou 'cancel'):"
+    type-player-name: "Entrez les noms des joueurs séparés par des espaces (ou 'cancel'):"
+    lore-create: "Clique et entre le nom de l'équipe"
+    lore-back: "Retour à la liste des équipes"
+    lore-add-player: "Entre un ou plusieurs noms de joueurs"
+    lore-add-player-hint: "Exemple: Joueur1 Joueur2 Joueur3"
+    lore-set-kit: "Clique pour sélectionner un kit"
+    lore-delete: "Supprime l'équipe et tous ses membres"
+    lore-current-kit: "Affiche le kit actuellement assigné"
   kit:
     title: "Sélectionner un kit"
     remove: "Retirer le kit"
+    lore-remove: "Retire le kit assigné de l'équipe"
+    lore-select: "Clique pour assigner ce kit"

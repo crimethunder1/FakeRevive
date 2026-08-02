@@ -55,7 +55,12 @@ public class TeamGui {
             inv.setItem(innerSlots[i], buildTeamItem(teamNames.get(i)));
         }
 
-        inv.setItem(49, makeGlass(Material.LIME_STAINED_GLASS_PANE, messageService.get("gui.team.create")));
+        inv.setItem(49, makeGlass(Material.LIME_STAINED_GLASS_PANE,
+                messageService.get("gui.team.create"),
+                List.of(
+                        Component.text(messageService.get("gui.team.lore-create"),
+                                NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+                )));
 
         player.openInventory(inv);
     }
@@ -73,11 +78,27 @@ public class TeamGui {
             inv.setItem(i, buildMemberHead(members.get(i)));
         }
 
-        inv.setItem(45, makeGlass(Material.ARROW, messageService.get("gui.team.back")));
-        inv.setItem(46, makeGlass(Material.LIME_STAINED_GLASS_PANE, messageService.get("gui.team.add-player")));
+        inv.setItem(45, makeGlass(Material.ARROW,
+                messageService.get("gui.team.back"),
+                List.of(Component.text(messageService.get("gui.team.lore-back"),
+                        NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))));
+        inv.setItem(46, makeGlass(Material.LIME_STAINED_GLASS_PANE,
+                messageService.get("gui.team.add-player"),
+                List.of(
+                        Component.text(messageService.get("gui.team.lore-add-player"),
+                                NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                        Component.text(messageService.get("gui.team.lore-add-player-hint"),
+                                NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
+                )));
         inv.setItem(48, buildKitDisplayItem(teamName));
-        inv.setItem(50, makeGlass(Material.CHEST, messageService.get("gui.team.set-kit")));
-        inv.setItem(53, makeGlass(Material.RED_STAINED_GLASS_PANE, messageService.get("gui.team.delete")));
+        inv.setItem(50, makeGlass(Material.CHEST,
+                messageService.get("gui.team.set-kit"),
+                List.of(Component.text(messageService.get("gui.team.lore-set-kit"),
+                        NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))));
+        inv.setItem(53, makeGlass(Material.RED_STAINED_GLASS_PANE,
+                messageService.get("gui.team.delete"),
+                List.of(Component.text(messageService.get("gui.team.lore-delete"),
+                        NamedTextColor.RED).decoration(TextDecoration.ITALIC, false))));
 
         player.openInventory(inv);
     }
@@ -93,11 +114,21 @@ public class TeamGui {
         List<String> kits = new ArrayList<>(kitManager.getKitNames());
         int[] innerSlots = innerSlots();
         for (int i = 0; i < Math.min(kits.size(), innerSlots.length); i++) {
-            inv.setItem(innerSlots[i], makeGlass(Material.CHEST, kits.get(i)));
+            ItemStack kitItem = new ItemStack(Material.CHEST);
+            ItemMeta meta = kitItem.getItemMeta();
+            meta.displayName(Component.text(kits.get(i), NamedTextColor.YELLOW)
+                    .decoration(TextDecoration.ITALIC, false));
+            meta.lore(List.of(Component.text(messageService.get("gui.kit.lore-select"),
+                    NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+            kitItem.setItemMeta(meta);
+            inv.setItem(innerSlots[i], kitItem);
         }
 
         inv.setItem(45, makeGlass(Material.ARROW, messageService.get("gui.team.back")));
-        inv.setItem(49, makeGlass(Material.RED_STAINED_GLASS_PANE, messageService.get("gui.kit.remove")));
+        inv.setItem(49, makeGlass(Material.RED_STAINED_GLASS_PANE,
+                messageService.get("gui.kit.remove"),
+                List.of(Component.text(messageService.get("gui.kit.lore-remove"),
+                        NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))));
 
         player.openInventory(inv);
     }
@@ -155,6 +186,8 @@ public class TeamGui {
         meta.displayName(Component.text(
                 messageService.get("gui.team.current-kit", "kit", kit != null ? kit : messageService.get("gui.team.no-kit")),
                 NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
+        meta.lore(List.of(Component.text(messageService.get("gui.team.lore-current-kit"),
+                NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
         item.setItemMeta(meta);
         return item;
     }
@@ -163,6 +196,14 @@ public class TeamGui {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
         meta.displayName(Component.text(name, NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false));
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private ItemStack makeGlass(Material material, String name, List<Component> lore) {
+        ItemStack item = makeGlass(material, name);
+        ItemMeta meta = item.getItemMeta();
+        meta.lore(lore);
         item.setItemMeta(meta);
         return item;
     }

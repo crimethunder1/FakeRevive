@@ -122,14 +122,29 @@ public class TeamGuiListener implements Listener {
                         sendMessage(player, "commands.team.cancelled", NamedTextColor.YELLOW);
                         return;
                     }
-                    Player target = Bukkit.getPlayer(input);
-                    if (target == null) {
-                        sendMessage(player, "commands.team.player-not-found", NamedTextColor.RED, "player", input);
-                        return;
+                    String[] names = input.trim().split("\\s+");
+                    int added = 0;
+                    List<String> notFound = new ArrayList<>();
+
+                    for (String name : names) {
+                        if (name.isBlank()) continue;
+                        Player target = Bukkit.getPlayer(name);
+                        if (target == null) {
+                            notFound.add(name);
+                        } else {
+                            teamManager.addPlayer(target.getUniqueId(), teamName);
+                            added++;
+                        }
                     }
-                    teamManager.addPlayer(target.getUniqueId(), teamName);
-                    sendMessage(player, "commands.team.player-added", NamedTextColor.GREEN,
-                            "player", target.getName(), "team", teamName);
+
+                    if (added > 0) {
+                        sendMessage(player, "commands.team.players-added", NamedTextColor.GREEN,
+                                "count", String.valueOf(added), "team", teamName);
+                    }
+                    if (!notFound.isEmpty()) {
+                        sendMessage(player, "commands.team.players-not-found", NamedTextColor.RED,
+                                "players", String.join(", ", notFound));
+                    }
                     Bukkit.getScheduler().runTask(plugin, () -> teamGui.openTeamMenu(player, teamName));
                 });
             }
