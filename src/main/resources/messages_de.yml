@@ -21,7 +21,7 @@ commands:
     success-other: "Du hast {player} die Verkleidung entfernt."
     success-all: "Alle Verkleidungen wurden entfernt ({count} Spieler)."
   disguise:
-    usage: "Benutzung: /fr disguise <Spieler> [Kit]"
+    usage: "Benutzung: /fr disguise <Spieler|@p|@r> [MinecraftName]"
     not-found: "Dieser Spieler wurde nicht gefunden."
     pool-exhausted: "Der Fake-Namen-Pool ist erschöpft."
     success: "{player} wurde als \"{name}\" verkleidet."
@@ -69,7 +69,7 @@ commands:
     header: "Hilfe"
     revive: "/fr revive <Spieler/@a/Team> [Kit]: Spieler wiederbeleben"
     undisguise: "/fr undisguise [Spieler]: Verkleidung entfernen"
-    disguise: "/fr disguise <Spieler> [Kit]: Spieler manuell verkleiden"
+    disguise: "/fr disguise <Spieler|@p|@r> [MinecraftName]: Spieler manuell verkleiden"
     kit-save: "/fr kit save <Name>: Inventar als Kit speichern"
     kit-list: "/fr kit list: Alle Kits anzeigen"
     kit-give: "/fr kit give <Kit> <Spieler>: Kit an Spieler geben"

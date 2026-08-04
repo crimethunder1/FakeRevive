@@ -21,7 +21,7 @@ commands:
     success-other: "Vous avez retiré le déguisement de {player}."
     success-all: "Tous les déguisements ont été retirés ({count} joueurs)."
   disguise:
-    usage: "Utilisation : /fr disguise <joueur> [kit]"
+    usage: "Utilisation : /fr disguise <joueur|@p|@r> [NomMinecraft]"
     not-found: "Joueur introuvable."
     pool-exhausted: "Le pool de faux noms est épuisé."
     success: "{player} a été déguisé en \"{name}\"."
@@ -69,7 +69,7 @@ commands:
     header: "Aide"
     revive: "/fr revive <joueur/@a/équipe> [kit]: Réanimer un joueur"
     undisguise: "/fr undisguise [joueur]: Retirer un déguisement"
-    disguise: "/fr disguise <joueur> [kit]: Déguiser manuellement un joueur"
+    disguise: "/fr disguise <joueur|@p|@r> [NomMinecraft]: Déguiser manuellement un joueur"
     kit-save: "/fr kit save <nom>: Sauvegarder l'inventaire comme kit"
     kit-list: "/fr kit list: Afficher tous les kits"
     kit-give: "/fr kit give <kit> <joueur>: Donner un kit à un joueur"

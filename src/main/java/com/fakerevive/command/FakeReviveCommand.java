@@ -171,9 +171,6 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
             Bukkit.getOnlinePlayers().forEach(p -> options.add(p.getName()));
             return filterByPrefix(options, args[1]);
         }
-        if (args.length == 3) {
-            return filterByPrefix(new ArrayList<>(kitManager.getKitNames()), args[2]);
-        }
         return List.of();
     }
 
@@ -420,23 +417,12 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleDisguise(CommandSender sender, String[] args) {
-        if (args.length < 1 || args.length > 3) {
+        if (args.length < 1 || args.length > 2) {
             sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.disguise.usage"), NamedTextColor.RED)));
             return true;
         }
 
-        String kitName = null;
-        String customName = null;
-        if (args.length == 2) {
-            if (kitManager.getKitNames().contains(args[1])) {
-                kitName = args[1];
-            } else {
-                customName = args[1];
-            }
-        } else if (args.length == 3) {
-            customName = args[1];
-            kitName = args[2];
-        }
+        String customName = args.length == 2 ? args[1] : null;
 
         if (args[0].equalsIgnoreCase("@p")) {
             if (!(sender instanceof Player senderPlayer)) {
@@ -447,7 +433,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
             int count = 0;
             for (Player nearby : senderPlayer.getWorld().getPlayers()) {
                 if (nearby.getLocation().distanceSquared(senderPlayer.getLocation()) <= NEARBY_RADIUS_SQUARED) {
-                    disguiseWithRandomIdentity(nearby, kitName, sender);
+                    disguiseWithRandomIdentity(nearby, null, sender);
                     count++;
                 }
             }
@@ -465,7 +451,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
             }
 
             Player target = online.get(random.nextInt(online.size()));
-            disguiseWithRandomIdentity(target, kitName, sender);
+            disguiseWithRandomIdentity(target, null, sender);
             return true;
         }
 
@@ -477,7 +463,6 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
 
         if (customName != null) {
             String finalCustomName = customName;
-            String finalKitName = kitName;
             sender.sendMessage(PREFIX.append(Component.text(
                     messageService.get("commands.revive.fetching-profile", "name", customName),
                     NamedTextColor.GRAY)));
@@ -492,13 +477,13 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
                                 NamedTextColor.RED)));
                         return;
                     }
-                    applyDisguiseIdentity(target, identity.get(), finalKitName, sender);
+                    applyDisguiseIdentity(target, identity.get(), null, sender);
                 });
             });
             return true;
         }
 
-        disguiseWithRandomIdentity(target, kitName, sender);
+        disguiseWithRandomIdentity(target, null, sender);
         return true;
     }
 
