@@ -152,7 +152,13 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
 
     private List<String> completeUndisguise(String[] args) {
         if (args.length == 2) {
-            return onlinePlayerNames(args[1]);
+            List<String> options = new ArrayList<>();
+            options.add("@a");
+            Bukkit.getOnlinePlayers().forEach(p -> {
+                options.add(p.getName());
+                activeDisguiseRegistry.getFakeName(p.getUniqueId()).ifPresent(options::add);
+            });
+            return filterByPrefix(options, args[1]);
         }
         return List.of();
     }
@@ -179,7 +185,14 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
             return switch (args[1].toLowerCase()) {
                 case "give" -> {
                     if (args.length == 3) yield filterByPrefix(new ArrayList<>(kitManager.getKitNames()), args[2]);
-                    if (args.length == 4) yield onlinePlayerNames(args[3]);
+                    if (args.length == 4) {
+                        List<String> options = new ArrayList<>();
+                        Bukkit.getOnlinePlayers().forEach(p -> {
+                            options.add(p.getName());
+                            activeDisguiseRegistry.getFakeName(p.getUniqueId()).ifPresent(options::add);
+                        });
+                        yield filterByPrefix(options, args[3]);
+                    }
                     yield List.of();
                 }
                 case "equip" -> {
@@ -195,12 +208,6 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
             };
         }
         return List.of();
-    }
-
-    private List<String> onlinePlayerNames(String prefix) {
-        List<String> names = new ArrayList<>();
-        Bukkit.getOnlinePlayers().forEach(p -> names.add(p.getName()));
-        return filterByPrefix(names, prefix);
     }
 
     private List<String> filterByPrefix(List<String> options, String prefix) {
@@ -356,6 +363,23 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleUndisguise(CommandSender sender, String[] args) {
+        if (args.length == 1 && args[0].equalsIgnoreCase("@a")) {
+            int count = 0;
+            for (Player online : Bukkit.getOnlinePlayers()) {
+                if (activeDisguiseRegistry.getIdentity(online.getUniqueId()).isPresent()) {
+                    activeDisguiseRegistry.clear(online.getUniqueId());
+                    playerDisguiseService.remove(online);
+                    online.sendMessage(PREFIX.append(Component.text(
+                            messageService.get("commands.undisguise.success-self"), NamedTextColor.YELLOW)));
+                    count++;
+                }
+            }
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.undisguise.success-all", "count", String.valueOf(count)),
+                    NamedTextColor.GREEN)));
+            return true;
+        }
+
         Player target;
         if (args.length == 0) {
             if (!(sender instanceof Player)) {
@@ -365,6 +389,12 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
             target = (Player) sender;
         } else {
             target = Bukkit.getPlayer(args[0]);
+            if (target == null) {
+                UUID byFakeName = activeDisguiseRegistry.findByFakeName(args[0]).orElse(null);
+                if (byFakeName != null) {
+                    target = Bukkit.getPlayer(byFakeName);
+                }
+            }
             if (target == null) {
                 sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.undisguise.not-found"), NamedTextColor.RED)));
                 return true;
@@ -532,6 +562,12 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
 
         String name = args[1];
         Player target = Bukkit.getPlayer(args[2]);
+        if (target == null) {
+            UUID byFakeName = activeDisguiseRegistry.findByFakeName(args[2]).orElse(null);
+            if (byFakeName != null) {
+                target = Bukkit.getPlayer(byFakeName);
+            }
+        }
         if (target == null) {
             sender.sendMessage(PREFIX.append(Component.text(
                     messageService.get("commands.kit.give-player-not-found", "player", args[2]), NamedTextColor.RED)));

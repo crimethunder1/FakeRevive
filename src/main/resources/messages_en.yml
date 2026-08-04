@@ -14,11 +14,12 @@ commands:
     players-only: "Only players can use this command."
     fetching-profile: "Fetching profile for \"{name}\"..."
   undisguise:
-    usage: "Usage: /fr undisguise [player]"
+    usage: "Usage: /fr undisguise [@a|player|fakename]"
     not-found: "Player not found."
     not-disguised: "This player is not disguised."
     success-self: "Your disguise has been removed."
     success-other: "You removed {player}'s disguise."
+    success-all: "All disguises removed ({count} players)."
   disguise:
     usage: "Usage: /fr disguise <player> [kit]"
     not-found: "Player not found."

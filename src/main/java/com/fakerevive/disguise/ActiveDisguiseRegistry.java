@@ -30,6 +30,19 @@ public class ActiveDisguiseRegistry {
     }
 
     /**
+     * Finds the UUID of the player whose current fake name matches the given string.
+     * Comparison is case-insensitive.
+     *
+     * @return the UUID of the disguised player, or empty if no player has this fake name.
+     */
+    public Optional<UUID> findByFakeName(String fakeName) {
+        return activeIdentities.entrySet().stream()
+                .filter(e -> e.getValue().name().equalsIgnoreCase(fakeName))
+                .map(Map.Entry::getKey)
+                .findFirst();
+    }
+
+    /**
      * Removes the disguise registration for the given player. Must be called before
      * {@link PlayerDisguiseService#remove(Player)} so the packet interceptor no longer
      * rewrites outgoing PlayerInfo packets for this player.
