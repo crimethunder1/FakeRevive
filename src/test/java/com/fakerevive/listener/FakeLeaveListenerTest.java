@@ -44,7 +44,8 @@ class FakeLeaveListenerTest {
 
         player.damage(player.getHealth() + 1);
 
-        PlayerQuitEvent quitEvent = new PlayerQuitEvent(player, Component.text("Victim left the game"));
+        PlayerQuitEvent quitEvent = new PlayerQuitEvent(player, Component.text("Victim left the game"),
+                PlayerQuitEvent.QuitReason.DISCONNECTED);
         Bukkit.getPluginManager().callEvent(quitEvent);
 
         assertNull(quitEvent.quitMessage());
@@ -65,7 +66,8 @@ class FakeLeaveListenerTest {
         PlayerMock bystander = server.addPlayer("Bystander");
         bystander.setGameMode(GameMode.SPECTATOR);
 
-        PlayerQuitEvent quitEvent = new PlayerQuitEvent(bystander, Component.text("Bystander left the game"));
+        PlayerQuitEvent quitEvent = new PlayerQuitEvent(bystander, Component.text("Bystander left the game"),
+                PlayerQuitEvent.QuitReason.DISCONNECTED);
         Bukkit.getPluginManager().callEvent(quitEvent);
 
         assertNotNull(quitEvent.quitMessage());
