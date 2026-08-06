@@ -22,6 +22,11 @@ until their next death.
 * Disguises survive reconnects and stay active until the player's next
   death
 * Used fake names are permanently retired and never reassigned
+* Chat messages from disguised players show their fake name to everyone;
+  operators additionally see the real name as a prefix
+* Operators see the real name as a prefix in the tab list next to the fake
+  name
+* `/fr undisguise` and `/fr kit give` accept fake player names as input
 
 ## Commands
 
@@ -31,15 +36,15 @@ permission (default: `op`), except `/fr leave`, which only requires
 
 | Command | Description |
 |---|---|
-| `/fr revive <player\|@a\|@p\|@r\|team> [kit]` | Revives one faked-out player, all of them (`@a`), nearby ones (`@p`), a random one (`@r`), or a whole team. If a kit name is given, the player is equipped with it. |
-| `/fr revive <player> <name> [kit]` | Revives the player under a specific, real Minecraft account's name and skin instead of a randomly generated one. |
-| `/fr undisguise [player]` | Removes the disguise from the given player, or from yourself if no player is specified. |
-| `/fr disguise <player\|@p\|@r> [kit]` | Manually assigns a random disguise to a player (or nearby/random players), optionally equipping a kit at the same time. |
-| `/fr disguise <player> <name> [kit]` | Disguises the player as a specific, real Minecraft account instead of a randomly generated one. |
-| `/fr kit save <name>` | Saves the current inventory (items, armor, offhand) as a kit. |
+| `/fr revive <player\|@a\|@p\|@r\|team> [kit]` | Revives faked-out players. `@a` revives all, `@p` nearby (16 blocks), `@r` random, or all online members of a team. Kit is optional. |
+| `/fr revive <player> <MinecraftName> [kit]` | Revives a player disguised as a specific real Minecraft account (name and skin fetched from Mojang). |
+| `/fr undisguise [@a\|player\|fakename]` | Removes a disguise. `@a` removes all active disguises. Accepts both real and fake player names. |
+| `/fr disguise <player\|@p\|@r> [MinecraftName]` | Assigns a random disguise, or a specific real Minecraft account's identity if a name is given. `@p` targets nearby players (16 blocks), `@r` a random online player. |
+| `/fr kit save <name>` | Saves current inventory (items, armor, offhand) as a named kit. |
 | `/fr kit list` | Lists all saved kits. |
-| `/fr kit give <kit> <player>` | Gives a copy of the kit's items to a player's inventory (armor/offhand included); anything that doesn't fit drops on the ground. |
-| `/fr kit equip <kit> [player\|team]` | Equips a kit directly into all of a player's slots (or your own), overwriting whatever was there. If a team name is given, equips every online member of that team. |
+| `/fr kit delete <name>` | Deletes a saved kit. |
+| `/fr kit give <kit> <player\|fakename\|@a\|team>` | Gives kit items to a player's inventory. `@a` gives to all online players, team name gives to all online team members. Overflow drops on the ground. Accepts fake player names. |
+| `/fr kit equip <kit> [@a\|player\|team]` | Equips a kit directly into all slots. `@a` equips all online players, team name equips all online members. |
 | `/fr team` | Opens the team management GUI (create/delete teams, assign kits, add/remove members, clear members' inventories). |
 | `/fr leave` | Leaves your own team. |
 | `/fr reload` | Reloads `config.yml`, the message files, and all kits. |
@@ -93,6 +98,19 @@ the pool topped up (this requires internet access to `api.mojang.com` and
 `sessionserver.mojang.com`). Used names are permanently retired: the pool
 never reassigns a name that's already been handed out.
 
+### Chat and tab list
+
+While a disguise is active, the player's fake identity is used in chat and
+in the tab list:
+
+* Chat: everyone sees `<FakeName> <message>`. Operators additionally see
+  the real name as a prefix: `[RealName] <FakeName> <message>`.
+* Tab list: everyone sees the fake name. Operators see the real name as an
+  aqua prefix in front of it: `[RealName] FakeName`.
+
+Because fake names are shown this way, `/fr undisguise` and
+`/fr kit give` also accept a fake name where a player name is expected.
+
 **Known limitations:**
 * A disguised player's own client always renders their real skin in
   third-person view: this is a Minecraft client limitation and cannot be
@@ -108,6 +126,9 @@ Kits are stored in `plugins/FakeRevive/kits.yml`.
 * `/fr kit give` adds items via `addItem()`: anything that doesn't fit in
   the inventory drops on the ground.
 * `/fr kit equip` sets all slots directly: nothing is dropped.
+* `/fr kit delete` removes a kit permanently.
+* `/fr kit give` and `/fr kit equip` accept `@a` (all online players) and
+  team names as targets.
 
 ## Building from source
 
