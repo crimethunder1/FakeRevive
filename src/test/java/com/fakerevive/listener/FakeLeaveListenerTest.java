@@ -4,6 +4,7 @@ import com.fakerevive.FakeRevivePlugin;
 import com.fakerevive.disguise.FakeIdentity;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -80,9 +81,11 @@ class FakeLeaveListenerTest {
 
         target.damage(target.getHealth() + 1);
 
+        // The death message keeps its original component structure — only the name is swapped in
+        // place — so compare the rendered text rather than the component tree.
         assertEquals(
-                Component.text("Crimson_Wolf got killed"),
-                bystander.nextComponentMessage());
+                "Crimson_Wolf got killed",
+                PlainTextComponentSerializer.plainText().serialize(bystander.nextComponentMessage()));
         assertEquals(
                 Component.text("Crimson_Wolf left the game", NamedTextColor.YELLOW),
                 bystander.nextComponentMessage());

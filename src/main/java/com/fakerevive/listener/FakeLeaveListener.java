@@ -25,9 +25,9 @@ import com.fakerevive.disguise.ActiveDisguiseRegistry;
 import com.fakerevive.disguise.PlayerDisguiseService;
 import com.fakerevive.message.MessageService;
 
+import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 
 /**
  * Handles death, quit, and join events to implement the fake-leave mechanic. On death the
@@ -61,25 +61,30 @@ public class FakeLeaveListener implements Listener {
         Component originalDeathMessage = event.deathMessage();
         boolean killMessageEnabled = plugin.getConfig().getBoolean("kill-message.enabled", false);
 
-        if (originalDeathMessage != null && killMessageEnabled) {
-            String raw = PlainTextComponentSerializer.plainText().serialize(originalDeathMessage);
+        if (originalDeathMessage != null) {
+            Component deathMessage = originalDeathMessage;
 
-            String victimFake = activeFakeName.orElse(null);
-            if (victimFake != null) {
-                raw = raw.replace(player.getName(), victimFake);
+            // Replace victim fake name
+            if (activeFakeName.isPresent()) {
+                String fakeVictim = activeFakeName.get();
+                String realVictim = player.getName();
+                deathMessage = deathMessage.replaceText(b -> b.matchLiteral(realVictim).replacement(fakeVictim));
             }
 
+            // Replace killer fake name
             Player killer = player.getKiller();
             if (killer != null) {
-                String killerFake = activeDisguiseRegistry.getFakeName(killer.getUniqueId()).orElse(null);
-                if (killerFake != null) {
-                    raw = raw.replace(killer.getName(), killerFake);
+                Optional<String> killerFake = activeDisguiseRegistry.getFakeName(killer.getUniqueId());
+                if (killerFake.isPresent()) {
+                    String realKiller = killer.getName();
+                    String fakeKiller = killerFake.get();
+                    deathMessage = deathMessage.replaceText(b -> b.matchLiteral(realKiller).replacement(fakeKiller));
                 }
             }
 
-            Bukkit.broadcast(Component.text(raw));
-        } else if (activeFakeName.isEmpty() && originalDeathMessage != null) {
-            Bukkit.broadcast(originalDeathMessage);
+            if (killMessageEnabled) {
+                Bukkit.broadcast(deathMessage);
+            }
         }
 
         event.deathMessage(null);
@@ -130,6 +135,37 @@ public class FakeLeaveListener implements Listener {
             pendingRespawnTask.cancel();
             fakedOutPlayers.remove(playerId);
         }
+    }
+
+    /**
+     * Intercepts chat messages from disguised players and re-broadcasts them
+     * using the fake name. Operators see the real name as an aqua prefix.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onChat(AsyncChatEvent event) {
+        Player player = event.getPlayer();
+        Optional<String> fakeName = activeDisguiseRegistry.getFakeName(player.getUniqueId());
+        if (fakeName.isEmpty()) {
+            return;
+        }
+
+        event.setCancelled(true);
+        String fakeNameStr = fakeName.get();
+        String realName = player.getName();
+        Component message = event.message();
+
+        Component normalFormat = Component.text("<" + fakeNameStr + "> ").append(message);
+
+        Component opFormat = Component.text("[" + realName + "] ", NamedTextColor.AQUA)
+                .append(Component.text("<" + fakeNameStr + "> "))
+                .append(message);
+
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            for (Player recipient : Bukkit.getOnlinePlayers()) {
+                recipient.sendMessage(recipient.isOp() ? opFormat : normalFormat);
+            }
+            Bukkit.getConsoleSender().sendMessage(opFormat);
+        });
     }
 
     @EventHandler

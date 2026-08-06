@@ -36,7 +36,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 /**
- * Handles all {@code /fr} subcommands: revive, undisguise, disguise, kit (save/list/give/equip),
+ * Handles all {@code /fr} subcommands: revive, undisguise, disguise, kit (save/list/give/equip/delete),
  * team, leave, reload, and help. Also provides context-aware tab completion for all subcommands.
  */
 public class FakeReviveCommand implements CommandExecutor, TabCompleter {
@@ -176,7 +176,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
 
     private List<String> completeKit(String[] args) {
         if (args.length == 2) {
-            return filterByPrefix(List.of("save", "list", "give", "equip"), args[1]);
+            return filterByPrefix(List.of("save", "list", "give", "equip", "delete"), args[1]);
         }
         if (args.length >= 3) {
             return switch (args[1].toLowerCase()) {
@@ -184,6 +184,8 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
                     if (args.length == 3) yield filterByPrefix(new ArrayList<>(kitManager.getKitNames()), args[2]);
                     if (args.length == 4) {
                         List<String> options = new ArrayList<>();
+                        options.add("@a");
+                        options.addAll(teamManager.getTeamNames());
                         Bukkit.getOnlinePlayers().forEach(p -> {
                             options.add(p.getName());
                             activeDisguiseRegistry.getFakeName(p.getUniqueId()).ifPresent(options::add);
@@ -195,10 +197,16 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
                 case "equip" -> {
                     if (args.length == 3) yield filterByPrefix(new ArrayList<>(kitManager.getKitNames()), args[2]);
                     if (args.length == 4) {
-                        List<String> options = new ArrayList<>(teamManager.getTeamNames());
+                        List<String> options = new ArrayList<>();
+                        options.add("@a");
+                        options.addAll(teamManager.getTeamNames());
                         Bukkit.getOnlinePlayers().forEach(p -> options.add(p.getName()));
                         yield filterByPrefix(options, args[3]);
                     }
+                    yield List.of();
+                }
+                case "delete" -> {
+                    if (args.length == 3) yield filterByPrefix(new ArrayList<>(kitManager.getKitNames()), args[2]);
                     yield List.of();
                 }
                 default -> List.of();
@@ -535,6 +543,25 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
             return handleKitEquip(sender, args);
         }
 
+        if (args[0].equalsIgnoreCase("delete")) {
+            if (args.length != 2) {
+                sender.sendMessage(PREFIX.append(Component.text(
+                        messageService.get("commands.kit.delete-usage"), NamedTextColor.RED)));
+                return true;
+            }
+
+            if (!kitManager.deleteKit(args[1])) {
+                sender.sendMessage(PREFIX.append(Component.text(
+                        messageService.get("commands.kit.delete-not-found", "name", args[1]),
+                        NamedTextColor.RED)));
+                return true;
+            }
+
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.kit.deleted", "name", args[1]), NamedTextColor.GREEN)));
+            return true;
+        }
+
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.kit.usage"), NamedTextColor.RED)));
         return true;
     }
@@ -553,6 +580,53 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
                 target = Bukkit.getPlayer(byFakeName);
             }
         }
+        if (args[2].equalsIgnoreCase("@a")) {
+            if (!kitManager.getKitNames().contains(name)) {
+                sender.sendMessage(PREFIX.append(Component.text(
+                        messageService.get("commands.kit.give-kit-not-found", "name", name), NamedTextColor.RED)));
+                return true;
+            }
+
+            int count = 0;
+            for (Player online : Bukkit.getOnlinePlayers()) {
+                if (plugin.getConfig().getBoolean("kits.clear-before-give", false)) {
+                    online.getInventory().clear();
+                }
+                kitManager.giveKit(name, online);
+                count++;
+            }
+
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.kit.give-all-success", "name", name, "count", String.valueOf(count)),
+                    NamedTextColor.GREEN)));
+            return true;
+        }
+
+        if (teamManager.teamExists(args[2])) {
+            if (!kitManager.getKitNames().contains(name)) {
+                sender.sendMessage(PREFIX.append(Component.text(
+                        messageService.get("commands.kit.give-kit-not-found", "name", name), NamedTextColor.RED)));
+                return true;
+            }
+
+            int count = 0;
+            for (UUID memberId : teamManager.getTeamMembers(args[2])) {
+                Player member = Bukkit.getPlayer(memberId);
+                if (member == null) continue;
+                if (plugin.getConfig().getBoolean("kits.clear-before-give", false)) {
+                    member.getInventory().clear();
+                }
+                kitManager.giveKit(name, member);
+                count++;
+            }
+
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.kit.give-team-success",
+                            "name", name, "count", String.valueOf(count), "team", args[2]),
+                    NamedTextColor.GREEN)));
+            return true;
+        }
+
         if (target == null) {
             sender.sendMessage(PREFIX.append(Component.text(
                     messageService.get("commands.kit.give-player-not-found", "player", args[2]), NamedTextColor.RED)));
@@ -585,6 +659,26 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         Player target;
         boolean equippingOther;
         if (args.length == 3) {
+            if (args[2].equalsIgnoreCase("@a")) {
+                int equipped = 0;
+                for (Player online : Bukkit.getOnlinePlayers()) {
+                    if (plugin.getConfig().getBoolean("kits.clear-before-equip", false)) {
+                        PlayerInventory onlineInventory = online.getInventory();
+                        onlineInventory.clear();
+                        onlineInventory.setArmorContents(null);
+                        onlineInventory.setItemInOffHand(null);
+                    }
+                    if (kitManager.equipKit(name, online)) {
+                        equipped++;
+                    }
+                }
+                sender.sendMessage(PREFIX.append(Component.text(
+                        messageService.get("commands.kit.equip-all-success",
+                                "name", name, "count", String.valueOf(equipped)),
+                        NamedTextColor.GREEN)));
+                return true;
+            }
+
             if (teamManager.teamExists(args[2])) {
                 int equipped = 0;
                 for (UUID memberId : teamManager.getTeamMembers(args[2])) {
@@ -698,6 +792,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.disguise"), NamedTextColor.YELLOW)));
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.kit-save"), NamedTextColor.YELLOW)));
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.kit-list"), NamedTextColor.YELLOW)));
+        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.kit-delete"), NamedTextColor.YELLOW)));
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.kit-give"), NamedTextColor.YELLOW)));
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.kit-equip"), NamedTextColor.YELLOW)));
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.team"), NamedTextColor.YELLOW)));

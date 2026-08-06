@@ -10,6 +10,8 @@ import com.github.retrooper.packetevents.protocol.player.UserProfile;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfoRemove;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfoUpdate;
 import com.fakerevive.message.MessageService;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -74,17 +76,36 @@ public class PlayerDisguiseService {
         refreshEntityForAllObservers(player, realProfile);
     }
 
+    /**
+     * Re-sends the given profile to every observer. Operators additionally get an
+     * {@code UPDATE_DISPLAY_NAME} entry showing the real name in front of the fake one, so staff
+     * can still tell who is behind a disguise in the tab list.
+     */
     private void refreshEntityForAllObservers(Player player, UserProfile profile) {
         UUID playerId = player.getUniqueId();
+        String realName = player.getName();
+        boolean isDisguised = activeDisguiseRegistry.getIdentity(playerId).isPresent();
+
+        WrapperPlayServerPlayerInfoRemove removePacket = new WrapperPlayServerPlayerInfoRemove(List.of(playerId));
+
         for (Player observer : Bukkit.getOnlinePlayers()) {
             if (observer.getUniqueId().equals(playerId)) continue;
 
+            PacketEvents.getAPI().getPlayerManager().sendPacket(observer, removePacket);
+
+            WrapperPlayServerPlayerInfoUpdate.PlayerInfo entry =
+                    new WrapperPlayServerPlayerInfoUpdate.PlayerInfo(profile);
+            EnumSet<WrapperPlayServerPlayerInfoUpdate.Action> actions =
+                    EnumSet.of(WrapperPlayServerPlayerInfoUpdate.Action.ADD_PLAYER);
+
+            if (isDisguised && observer.isOp()) {
+                entry.setDisplayName(Component.text("[" + realName + "] ", NamedTextColor.AQUA)
+                        .append(Component.text(profile.getName(), NamedTextColor.WHITE)));
+                actions.add(WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_DISPLAY_NAME);
+            }
+
             PacketEvents.getAPI().getPlayerManager().sendPacket(observer,
-                    new WrapperPlayServerPlayerInfoRemove(List.of(playerId)));
-            PacketEvents.getAPI().getPlayerManager().sendPacket(observer,
-                    new WrapperPlayServerPlayerInfoUpdate(
-                            EnumSet.of(WrapperPlayServerPlayerInfoUpdate.Action.ADD_PLAYER),
-                            List.of(new WrapperPlayServerPlayerInfoUpdate.PlayerInfo(profile))));
+                    new WrapperPlayServerPlayerInfoUpdate(actions, List.of(entry)));
 
             observer.hidePlayer(plugin, player);
             observer.showPlayer(plugin, player);
@@ -114,6 +135,7 @@ public class PlayerDisguiseService {
             if (recipient == null) return;
 
             boolean modified = false;
+            boolean displayNamesSet = false;
             for (WrapperPlayServerPlayerInfoUpdate.PlayerInfo entry : wrapper.getEntries()) {
                 UUID entryId = entry.getProfileId();
 
@@ -126,7 +148,23 @@ public class PlayerDisguiseService {
                 UserProfile fakeProfile = new UserProfile(entryId, fakeIdentity.name(),
                         List.of(new TextureProperty("textures", fakeIdentity.skinValue(), fakeIdentity.skinSignature())));
                 entry.setGameProfile(fakeProfile);
+
+                if (recipient.isOp()) {
+                    Player realPlayer = Bukkit.getPlayer(entryId);
+                    if (realPlayer != null) {
+                        entry.setDisplayName(Component.text("[" + realPlayer.getName() + "] ", NamedTextColor.AQUA)
+                                .append(Component.text(fakeIdentity.name(), NamedTextColor.WHITE)));
+                        displayNamesSet = true;
+                    }
+                }
+
                 modified = true;
+            }
+
+            if (displayNamesSet && !wrapper.getActions().contains(WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_DISPLAY_NAME)) {
+                EnumSet<WrapperPlayServerPlayerInfoUpdate.Action> actions = EnumSet.copyOf(wrapper.getActions());
+                actions.add(WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_DISPLAY_NAME);
+                wrapper.setActions(actions);
             }
 
             if (modified) {

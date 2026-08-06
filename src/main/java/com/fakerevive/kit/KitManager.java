@@ -162,6 +162,22 @@ public class KitManager {
         return true;
     }
 
+    /**
+     * Deletes the named kit and removes it from kits.yml.
+     *
+     * @return {@code true} if the kit existed and was deleted; {@code false} if not found.
+     */
+    public boolean deleteKit(String name) {
+        if (!kitNames.contains(name)) {
+            return false;
+        }
+
+        kitNames.remove(name);
+        kitsConfig.set("kits." + name, null);
+        save();
+        return true;
+    }
+
     /** @return a snapshot of all currently registered kit names; modifications do not affect the registry. */
     public Set<String> getKitNames() {
         return new HashSet<>(kitNames);
