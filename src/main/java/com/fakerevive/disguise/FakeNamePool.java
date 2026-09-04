@@ -35,6 +35,8 @@ public class FakeNamePool {
     }.getType();
 
     private final List<FakeIdentity> availableIdentities;
+    /** Mirrors the names in {@link #availableIdentities} so {@link #offer} can reject duplicates in O(1). */
+    private final Set<String> availableNames = new LinkedHashSet<>();
     private final Set<String> usedNames;
     private final Path usedNamesFile;
     private final Random random;
@@ -48,6 +50,9 @@ public class FakeNamePool {
         this.usedNames = new LinkedHashSet<>(readUsedNames(usedNamesFile));
         this.availableIdentities = readIdentities(namesResource);
         this.availableIdentities.removeIf(identity -> usedNames.contains(identity.name()));
+        for (FakeIdentity identity : availableIdentities) {
+            availableNames.add(identity.name());
+        }
         this.random = random;
     }
 
@@ -55,11 +60,16 @@ public class FakeNamePool {
      * Adds a freshly fetched identity to the pool so it can be handed out by a later
      * {@link #assignRandomIdentity()} call. Not thread-safe - callers must invoke this on the
      * same thread as the rest of the pool's API (the server main thread).
+     *
+     * @return {@code true} if the identity was accepted, {@code false} if its name was already
+     *         handed out previously or is already waiting in the pool.
      */
-    public void offer(FakeIdentity identity) {
-        if (!usedNames.contains(identity.name())) {
-            availableIdentities.add(identity);
+    public boolean offer(FakeIdentity identity) {
+        if (usedNames.contains(identity.name()) || !availableNames.add(identity.name())) {
+            return false;
         }
+        availableIdentities.add(identity);
+        return true;
     }
 
     /**
@@ -68,10 +78,18 @@ public class FakeNamePool {
      */
     public Set<String> getKnownNames() {
         Set<String> known = new LinkedHashSet<>(usedNames);
-        for (FakeIdentity identity : availableIdentities) {
-            known.add(identity.name());
-        }
+        known.addAll(availableNames);
         return known;
+    }
+
+    /** @return how many identities are still waiting to be handed out. */
+    public int availableCount() {
+        return availableIdentities.size();
+    }
+
+    /** @return how many names have been handed out and may never be reused. */
+    public int usedCount() {
+        return usedNames.size();
     }
 
     /**
@@ -91,6 +109,7 @@ public class FakeNamePool {
         availableIdentities.set(index, availableIdentities.get(lastIndex));
         availableIdentities.remove(lastIndex);
 
+        availableNames.remove(identity.name());
         usedNames.add(identity.name());
         persistUsedNames();
         return Optional.of(identity);

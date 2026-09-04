@@ -10,3 +10,23 @@ kits:
 armor:
   # Show an action bar message when a locked player tries to take their armor off.
   notify-blocked: true
+
+fake-names:
+  # Continuously pull fresh, never-before-used identities from the Mojang API in the background.
+  # Names that have been handed out are never reused, so the pool has to be refilled to keep
+  # working - with this off it will run dry and revives stop applying disguises.
+  auto-refill: true
+  # Keep this many unused identities ready to hand out.
+  target-pool-size: 60
+  # Start a refill as soon as the pool drops to this many or fewer.
+  low-water-mark: 25
+  # Most identities fetched in a single background batch. Bounds the load put on the Mojang API.
+  batch-size: 10
+  # Seconds between background refill checks. Values below 30 are raised to 30.
+  refill-interval-seconds: 300
+  # Milliseconds to wait between Mojang requests inside a batch. Values below 200 are raised to 200.
+  request-spacing-millis: 1200
+  # Attempts spent looking for one free name before giving up on it.
+  max-attempts-per-identity: 25
+  # Reuse cached donor skins instead of hunting a fresh donor per identity. Far fewer API calls.
+  reuse-donor-skins: true

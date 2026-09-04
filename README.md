@@ -53,6 +53,7 @@ permission (default: `op`), except `/fr leave`, which only requires
 | `/fr team` | Opens the team management GUI (create/delete teams, assign kits, add/remove members, clear members' inventories). |
 | `/fr armor <on\|off> [player\|team\|@a]` | Locks or unlocks worn armor. Without a target it applies to yourself. A team target covers every member, including offline ones. |
 | `/fr armor status [player]` | Shows who currently has an armor lock. |
+| `/fr pool [refill]` | Shows how many fake names are still available, how many have been used, and whether a refill is running. `refill` starts one immediately. |
 | `/fr leave` | Leaves your own team. |
 | `/fr reload` | Reloads `config.yml`, the message files, all kits, teams, and armor locks. |
 | `/fr help` | Shows all available commands. |
@@ -78,6 +79,16 @@ kits:
 
 armor:
   notify-blocked: true
+
+fake-names:
+  auto-refill: true
+  target-pool-size: 60
+  low-water-mark: 25
+  batch-size: 10
+  refill-interval-seconds: 300
+  request-spacing-millis: 1200
+  max-attempts-per-identity: 25
+  reuse-donor-skins: true
 ```
 
 * `language`: `de`, `en`, or `fr` (default: `de`)
@@ -85,6 +96,14 @@ armor:
 * `kits.clear-before-give`: clear the target's inventory before `/fr kit give` (default: `false`)
 * `kits.clear-before-equip`: clear all of the target's slots before `/fr kit equip` (default: `true`)
 * `armor.notify-blocked`: show an action bar message when a locked player tries to take their armor off (default: `true`)
+* `fake-names.auto-refill`: keep pulling fresh identities from Mojang in the background (default: `true`). Turning this off will eventually leave the pool empty, since used names are never reused.
+* `fake-names.target-pool-size`: how many unused identities to keep ready (default: `60`)
+* `fake-names.low-water-mark`: start a refill once the pool drops to this many or fewer (default: `25`)
+* `fake-names.batch-size`: most identities fetched per background batch (default: `10`, max `50`)
+* `fake-names.refill-interval-seconds`: seconds between background checks (default: `300`, minimum `30`)
+* `fake-names.request-spacing-millis`: pause between Mojang requests inside a batch (default: `1200`, minimum `200`)
+* `fake-names.max-attempts-per-identity`: attempts spent finding one free name (default: `25`)
+* `fake-names.reuse-donor-skins`: reuse cached donor skins instead of hunting a fresh donor per identity, which cuts API calls sharply (default: `true`)
 
 ## Requirements
 
@@ -103,11 +122,22 @@ armor:
 
 Around 200 fake identities ship bundled in `names.json`: usernames
 verified to not belong to any existing Minecraft account, each paired with
-a skin borrowed from an unrelated real donor account. After each revive,
-one fresh identity is fetched asynchronously from the Mojang API to keep
-the pool topped up (this requires internet access to `api.mojang.com` and
-`sessionserver.mojang.com`). Used names are permanently retired: the pool
-never reassigns a name that's already been handed out.
+a skin borrowed from an unrelated real donor account. Used names are
+permanently retired in `used-fake-names.yml`: the pool never reassigns a
+name that has already been handed out.
+
+Because names are never recycled, the pool has to be refilled to keep
+working. A background task checks it regularly and, once it has fallen to
+`fake-names.low-water-mark`, fetches a batch of fresh identities from the
+Mojang API back up towards `fake-names.target-pool-size`. This needs
+internet access to `api.mojang.com` and `sessionserver.mojang.com`. If
+Mojang is unreachable or rate-limiting, the refill backs off exponentially
+(up to 30 minutes) and logs a warning instead of retrying in a tight loop.
+
+If the pool does run dry, revives still go through, the player simply keeps
+their real name, and the command sender is told so explicitly. Run
+`/fr pool` to see the current counts, or `/fr pool refill` to trigger a
+refill by hand.
 
 ### Chat and tab list
 

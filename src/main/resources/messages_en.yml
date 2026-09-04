@@ -1,6 +1,6 @@
 commands:
   fr:
-    usage: "Usage: /fr <revive|undisguise|disguise|kit|team|leave|reload|help>"
+    usage: "Usage: /fr <revive|undisguise|disguise|kit|team|armor|pool|leave|reload|help>"
     no-permission: "You don't have permission to use this command."
   revive:
     usage: "Usage: /fr revive <player/@a/<team>> [kit]"
@@ -13,6 +13,8 @@ commands:
     success-team: "Revived {count} players from team \"{team}\"."
     players-only: "Only players can use this command."
     fetching-profile: "Fetching profile for \"{name}\"..."
+    pool-exhausted: "The name pool is empty - {player} was revived without a disguise. Fresh names are being fetched from Mojang in the background."
+    pool-exhausted-multiple: "{count} players were revived without a disguise because the name pool is empty."
   undisguise:
     usage: "Usage: /fr undisguise [@a|player|fakename]"
     not-found: "Player not found."
@@ -86,6 +88,12 @@ commands:
     no-permission: "You don't have permission to do that."
     no-team: "You are not in a team."
     success: "You left team \"{team}\"."
+  pool:
+    usage: "Usage: /fr pool [refill]"
+    status: "Name pool: {available} available, {used} used (target: {target})."
+    refilling: "Currently fetching fresh names from Mojang..."
+    idle: "No refill is running right now."
+    refill-started: "Refill from Mojang started."
   reload:
     success: "Config and kits reloaded."
   help:
@@ -99,6 +107,7 @@ commands:
     kit-give: "/fr kit give <kit> <player>: Give a kit to a player"
     kit-equip: "/fr kit equip <kit|team> [player|team]: Equip a kit"
     armor: "/fr armor <on|off|status> [player|team]: Lock armor in place"
+    pool: "/fr pool [refill]: Show or refill the name pool"
     team: "/fr team: Manage teams"
     leave: "/fr leave: Leave your current team"
     reload: "/fr reload: Reload config and kits"
@@ -112,6 +121,9 @@ events:
   death:
     fake-leave: "{name} left the game"
   pool-exhausted: "Name pool exhausted, {player} revived without disguise."
+  pool-refilled: "Name pool topped up: {count} fresh names from Mojang ({available} available)."
+  pool-refill-failed: "Mojang returned no new names. Next attempt in about {minutes} minutes."
+  pool-low: "Name pool nearly empty ({available} of {target}). Fetching fresh names from Mojang."
 plugin:
   enable: "FakeRevive successfully enabled!"
   disable: "FakeRevive disabled."

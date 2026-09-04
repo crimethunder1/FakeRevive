@@ -5,8 +5,10 @@ import com.fakerevive.armor.ArmorLockManager;
 import com.fakerevive.command.FakeReviveCommand;
 import com.fakerevive.disguise.ActiveDisguiseRegistry;
 import com.fakerevive.disguise.FakeNamePool;
+import com.fakerevive.disguise.FakeNamePoolReplenisher;
 import com.fakerevive.disguise.MojangIdentityFetcher;
 import com.fakerevive.disguise.PlayerDisguiseService;
+import com.fakerevive.disguise.ReplenishSettings;
 import com.fakerevive.kit.KitManager;
 import com.fakerevive.listener.FakeLeaveListener;
 import com.fakerevive.message.MessageService;
@@ -28,6 +30,7 @@ public class FakeRevivePlugin extends JavaPlugin {
 
     private ActiveDisguiseRegistry activeDisguiseRegistry;
     private MessageService messageService;
+    private FakeNamePoolReplenisher fakeNamePoolReplenisher;
 
     @Override
     public void onEnable() {
@@ -42,6 +45,8 @@ public class FakeRevivePlugin extends JavaPlugin {
         PlayerDisguiseService playerDisguiseService = new PlayerDisguiseService(activeDisguiseRegistry);
         playerDisguiseService.registerPacketListener(this, messageService);
         MojangIdentityFetcher identityFetcher = identityFetcherFactory.get();
+        fakeNamePoolReplenisher = new FakeNamePoolReplenisher(this, fakeNamePool, identityFetcher,
+                getLogger(), messageService, ReplenishSettings.fromConfig(getConfig()));
         KitManager kitManager = new KitManager(this);
         kitManager.loadKits();
 
@@ -62,14 +67,23 @@ public class FakeRevivePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(fakeLeaveListener, this);
         FakeReviveCommand fakeReviveCommand = new FakeReviveCommand(this, fakeLeaveListener, fakeNamePool,
                 activeDisguiseRegistry, playerDisguiseService, identityFetcher, kitManager, teamManager,
-                armorLockManager, teamGui, getLogger(), messageService);
+                armorLockManager, teamGui, fakeNamePoolReplenisher, getLogger(), messageService);
         getCommand("fr").setExecutor(fakeReviveCommand);
         getCommand("fr").setTabCompleter(fakeReviveCommand);
+
+        fakeNamePoolReplenisher.start();
+        if (fakeNamePool.availableCount() == 0) {
+            getLogger().warning(messageService.get("events.pool-low",
+                    "available", "0", "target", String.valueOf(fakeNamePoolReplenisher.getTargetSize())));
+        }
         getLogger().info(messageService.get("plugin.enable"));
     }
 
     @Override
     public void onDisable() {
+        if (fakeNamePoolReplenisher != null) {
+            fakeNamePoolReplenisher.stop();
+        }
         getLogger().info(messageService.get("plugin.disable"));
     }
 

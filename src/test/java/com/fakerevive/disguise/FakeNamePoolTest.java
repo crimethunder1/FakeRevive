@@ -13,6 +13,7 @@ import java.util.Random;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FakeNamePoolTest {
@@ -77,6 +78,51 @@ class FakeNamePoolTest {
 
         assertTrue(!secondName.equals(firstName) && !thirdName.equals(firstName));
         assertEquals(Optional.empty(), secondRun.assignRandomIdentity());
+    }
+
+    @Test
+    void offerRejectsNameAlreadyWaitingInThePool(@TempDir Path tempDir) {
+        FakeNamePool pool = new FakeNamePool(namesStream(), tempDir.resolve("used.yml"), new Random(1));
+
+        assertFalse(pool.offer(new FakeIdentity("Alpha_Wolf", "other", "other")));
+        assertEquals(3, pool.availableCount());
+    }
+
+    @Test
+    void offerRejectsNameThatWasAlreadyHandedOut(@TempDir Path tempDir) {
+        FakeNamePool pool = new FakeNamePool(namesStream(), tempDir.resolve("used.yml"), new Random(1));
+        FakeIdentity assigned = pool.assignRandomIdentity().orElseThrow();
+
+        assertFalse(pool.offer(assigned));
+        assertEquals(2, pool.availableCount());
+    }
+
+    @Test
+    void offerAcceptsAFreshNameAndCountsTrackAssignments(@TempDir Path tempDir) {
+        FakeNamePool pool = new FakeNamePool(namesStream(), tempDir.resolve("used.yml"), new Random(1));
+        assertEquals(3, pool.availableCount());
+        assertEquals(0, pool.usedCount());
+
+        pool.assignRandomIdentity();
+        assertEquals(2, pool.availableCount());
+        assertEquals(1, pool.usedCount());
+
+        assertTrue(pool.offer(new FakeIdentity("Delta_Raven", "v4", "s4")));
+        assertEquals(3, pool.availableCount());
+        assertEquals(1, pool.usedCount());
+    }
+
+    @Test
+    void knownNamesCoverBothUsedAndOfferedNames(@TempDir Path tempDir) {
+        FakeNamePool pool = new FakeNamePool(namesStream(), tempDir.resolve("used.yml"), new Random(1));
+        String assigned = pool.assignRandomIdentity().orElseThrow().name();
+        pool.offer(new FakeIdentity("Delta_Raven", "v4", "s4"));
+
+        Set<String> known = pool.getKnownNames();
+
+        assertTrue(known.contains(assigned));
+        assertTrue(known.contains("Delta_Raven"));
+        assertEquals(4, known.size());
     }
 
     private static InputStream namesStream() {

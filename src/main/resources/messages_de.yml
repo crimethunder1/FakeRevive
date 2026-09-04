@@ -1,6 +1,6 @@
 commands:
   fr:
-    usage: "Benutzung: /fr <revive|undisguise|disguise|kit|team|leave|reload|help>"
+    usage: "Benutzung: /fr <revive|undisguise|disguise|kit|team|armor|pool|leave|reload|help>"
     no-permission: "Du hast keine Berechtigung für diesen Befehl."
   revive:
     usage: "Benutzung: /fr revive <Spieler/@a/<Team>> [Kit]"
@@ -13,6 +13,8 @@ commands:
     success-team: "Es wurden {count} Spieler aus Team \"{team}\" wiederbelebt!"
     players-only: "Nur Spieler können diesen Befehl ausführen."
     fetching-profile: "Profil für \"{name}\" wird abgerufen..."
+    pool-exhausted: "Der Namen-Pool ist leer - {player} wurde ohne Verkleidung wiederbelebt. Neue Namen werden im Hintergrund von Mojang geholt."
+    pool-exhausted-multiple: "{count} Spieler wurden ohne Verkleidung wiederbelebt, weil der Namen-Pool leer ist."
   undisguise:
     usage: "Benutzung: /fr undisguise [@a|Spieler|FakeName]"
     not-found: "Dieser Spieler wurde nicht gefunden."
@@ -86,6 +88,12 @@ commands:
     no-permission: "Dafür hast du keine Berechtigung."
     no-team: "Du bist in keinem Team."
     success: "Du hast Team \"{team}\" verlassen."
+  pool:
+    usage: "Benutzung: /fr pool [refill]"
+    status: "Namen-Pool: {available} frei, {used} verbraucht (Ziel: {target})."
+    refilling: "Es werden gerade neue Namen von Mojang geholt..."
+    idle: "Aktuell läuft kein Nachschub-Vorgang."
+    refill-started: "Nachschub von Mojang wurde gestartet."
   reload:
     success: "Config und Kits wurden neu geladen."
   help:
@@ -99,6 +107,7 @@ commands:
     kit-give: "/fr kit give <Kit> <Spieler>: Kit an Spieler geben"
     kit-equip: "/fr kit equip <Kit|Team> [Spieler|Team]: Kit ausrüsten"
     armor: "/fr armor <on|off|status> [Spieler|Team]: Rüstung sperren"
+    pool: "/fr pool [refill]: Namen-Pool anzeigen oder nachfüllen"
     team: "/fr team: Teams verwalten"
     leave: "/fr leave: Eigenes Team verlassen"
     reload: "/fr reload: Config und Kits neu laden"
@@ -112,6 +121,9 @@ events:
   death:
     fake-leave: "{name} left the game"
   pool-exhausted: "Fake-Namen-Pool erschöpft, {player} wird ohne Verkleidung wiederbelebt."
+  pool-refilled: "Namen-Pool aufgefüllt: {count} neue Namen von Mojang ({available} verfügbar)."
+  pool-refill-failed: "Mojang lieferte keine neuen Namen. Nächster Versuch in ca. {minutes} Minuten."
+  pool-low: "Namen-Pool fast leer ({available} von {target}). Neue Namen werden von Mojang geholt."
 plugin:
   enable: "FakeRevive erfolgreich aktiviert!"
   disable: "FakeRevive deaktiviert."
