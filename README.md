@@ -27,6 +27,10 @@ until their next death.
 * Operators see the real name as a prefix in the tab list next to the fake
   name
 * `/fr undisguise` and `/fr kit give` accept fake player names as input
+* `/fr kit equip <team>` equips a team's own assigned kit to all of its
+  members in one command
+* `/fr armor on` locks worn armor in place like Curse of Binding, without
+  enchanting the items
 
 ## Commands
 
@@ -45,9 +49,12 @@ permission (default: `op`), except `/fr leave`, which only requires
 | `/fr kit delete <name>` | Deletes a saved kit. |
 | `/fr kit give <kit> <player\|fakename\|@a\|team>` | Gives kit items to a player's inventory. `@a` gives to all online players, team name gives to all online team members. Overflow drops on the ground. Accepts fake player names. |
 | `/fr kit equip <kit> [@a\|player\|team]` | Equips a kit directly into all slots. `@a` equips all online players, team name equips all online members. |
+| `/fr kit equip <team>` | Equips the kit assigned to that team (in the team GUI) to all of its online members. A team name takes precedence over an equally named kit. |
 | `/fr team` | Opens the team management GUI (create/delete teams, assign kits, add/remove members, clear members' inventories). |
+| `/fr armor <on\|off> [player\|team\|@a]` | Locks or unlocks worn armor. Without a target it applies to yourself. A team target covers every member, including offline ones. |
+| `/fr armor status [player]` | Shows who currently has an armor lock. |
 | `/fr leave` | Leaves your own team. |
-| `/fr reload` | Reloads `config.yml`, the message files, and all kits. |
+| `/fr reload` | Reloads `config.yml`, the message files, all kits, teams, and armor locks. |
 | `/fr help` | Shows all available commands. |
 
 When adding players to a team from the GUI, you can type one or more names,
@@ -68,12 +75,16 @@ kill-message:
 kits:
   clear-before-give: false
   clear-before-equip: true
+
+armor:
+  notify-blocked: true
 ```
 
 * `language`: `de`, `en`, or `fr` (default: `de`)
 * `kill-message.enabled`: show kill messages with fake names substituted in (default: `true`)
 * `kits.clear-before-give`: clear the target's inventory before `/fr kit give` (default: `false`)
 * `kits.clear-before-equip`: clear all of the target's slots before `/fr kit equip` (default: `true`)
+* `armor.notify-blocked`: show an action bar message when a locked player tries to take their armor off (default: `true`)
 
 ## Requirements
 
@@ -129,6 +140,29 @@ Kits are stored in `plugins/FakeRevive/kits.yml`.
 * `/fr kit delete` removes a kit permanently.
 * `/fr kit give` and `/fr kit equip` accept `@a` (all online players) and
   team names as targets.
+* `/fr kit equip <team>` (a single argument) is shorthand for "equip this
+  team's own kit to its members". The kit comes from the team's assignment
+  in the team GUI, stored in `teams.yml`. If a kit and a team share a name,
+  the team wins; use `/fr kit equip <kit> <player>` to target the kit
+  explicitly.
+
+## Armor lock
+
+`/fr armor on` makes worn armor behave like it carries Curse of Binding,
+but without touching the items: no enchantment is added, so the gear stays
+clean and the lock can be lifted again at any time with `/fr armor off`.
+
+* Putting armor **on** stays allowed - only taking a worn piece off is
+  blocked. That covers normal and shift clicks, hotbar number swaps,
+  offhand swaps, `Q`/`Ctrl+Q` drops, drags across an armor slot, and the
+  right-click swap with a piece in hand (the classic elytra/chestplate
+  swap).
+* Locks are stored per player UUID in `plugins/FakeRevive/armor-lock.yml`,
+  so they survive logouts and server restarts.
+* Targeting a team locks every member, including offline ones. `@a` only
+  covers players currently online.
+* On death, locked armor drops as usual - the lock only applies while the
+  player is alive, matching vanilla Curse of Binding.
 
 ## Building from source
 

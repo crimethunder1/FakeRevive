@@ -114,7 +114,11 @@ public class KitManager {
         }
 
         PlayerInventory inventory = player.getInventory();
-        inventory.setStorageContents(inventoryContents);
+        // Slots 0-35 are exactly the storage slots, so this matches setStorageContents() while
+        // staying within the plain Inventory API.
+        for (int i = 0; i < INVENTORY_SIZE; i++) {
+            inventory.setItem(i, inventoryContents[i]);
+        }
         inventory.setArmorContents(armorContents);
         inventory.setItemInOffHand(deserialize(serializedOffhand));
         player.updateInventory();

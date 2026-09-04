@@ -1,5 +1,7 @@
 package com.fakerevive;
 
+import com.fakerevive.armor.ArmorLockListener;
+import com.fakerevive.armor.ArmorLockManager;
 import com.fakerevive.command.FakeReviveCommand;
 import com.fakerevive.disguise.ActiveDisguiseRegistry;
 import com.fakerevive.disguise.FakeNamePool;
@@ -43,6 +45,11 @@ public class FakeRevivePlugin extends JavaPlugin {
         KitManager kitManager = new KitManager(this);
         kitManager.loadKits();
 
+        ArmorLockManager armorLockManager = new ArmorLockManager(this);
+        armorLockManager.loadLocks();
+        getServer().getPluginManager().registerEvents(
+                new ArmorLockListener(this, armorLockManager, messageService, FakeReviveCommand.PREFIX), this);
+
         TeamManager teamManager = new TeamManager(this);
         teamManager.loadTeams();
         TeamGui teamGui = new TeamGui(teamManager, kitManager, messageService);
@@ -54,8 +61,8 @@ public class FakeRevivePlugin extends JavaPlugin {
                 new FakeLeaveListener(this, activeDisguiseRegistry, playerDisguiseService, messageService);
         getServer().getPluginManager().registerEvents(fakeLeaveListener, this);
         FakeReviveCommand fakeReviveCommand = new FakeReviveCommand(this, fakeLeaveListener, fakeNamePool,
-                activeDisguiseRegistry, playerDisguiseService, identityFetcher, kitManager, teamManager, teamGui,
-                getLogger(), messageService);
+                activeDisguiseRegistry, playerDisguiseService, identityFetcher, kitManager, teamManager,
+                armorLockManager, teamGui, getLogger(), messageService);
         getCommand("fr").setExecutor(fakeReviveCommand);
         getCommand("fr").setTabCompleter(fakeReviveCommand);
         getLogger().info(messageService.get("plugin.enable"));

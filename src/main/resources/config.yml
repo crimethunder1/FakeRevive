@@ -6,3 +6,7 @@ kill-message:
 kits:
   clear-before-give: false
   clear-before-equip: true
+
+armor:
+  # Show an action bar message when a locked player tries to take their armor off.
+  notify-blocked: true

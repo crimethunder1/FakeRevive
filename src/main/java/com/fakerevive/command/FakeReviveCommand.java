@@ -1,5 +1,6 @@
 package com.fakerevive.command;
 
+import com.fakerevive.armor.ArmorLockManager;
 import com.fakerevive.disguise.ActiveDisguiseRegistry;
 import com.fakerevive.disguise.FakeIdentity;
 import com.fakerevive.disguise.FakeNamePool;
@@ -20,6 +21,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
@@ -37,11 +39,12 @@ import java.util.stream.Collectors;
 
 /**
  * Handles all {@code /fr} subcommands: revive, undisguise, disguise, kit (save/list/give/equip/delete),
- * team, leave, reload, and help. Also provides context-aware tab completion for all subcommands.
+ * team, armor, leave, reload, and help. Also provides context-aware tab completion for all subcommands.
  */
 public class FakeReviveCommand implements CommandExecutor, TabCompleter {
 
     private static final int REPLENISH_MAX_ATTEMPTS = 25;
+    private static final int ARMOR_SLOTS = 4;
     private static final int NEARBY_RADIUS_SQUARED = 16 * 16;
 
     private final JavaPlugin plugin;
@@ -52,6 +55,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
     private final MojangIdentityFetcher identityFetcher;
     private final KitManager kitManager;
     private final TeamManager teamManager;
+    private final ArmorLockManager armorLockManager;
     private final TeamGui teamGui;
     private final Logger logger;
     private final MessageService messageService;
@@ -62,7 +66,8 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
     public FakeReviveCommand(JavaPlugin plugin, FakeLeaveListener fakeLeaveListener, FakeNamePool fakeNamePool,
                               ActiveDisguiseRegistry activeDisguiseRegistry, PlayerDisguiseService playerDisguiseService,
                               MojangIdentityFetcher identityFetcher, KitManager kitManager, TeamManager teamManager,
-                              TeamGui teamGui, Logger logger, MessageService messageService) {
+                              ArmorLockManager armorLockManager, TeamGui teamGui, Logger logger,
+                              MessageService messageService) {
         this.plugin = plugin;
         this.fakeLeaveListener = fakeLeaveListener;
         this.fakeNamePool = fakeNamePool;
@@ -71,6 +76,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         this.identityFetcher = identityFetcher;
         this.kitManager = kitManager;
         this.teamManager = teamManager;
+        this.armorLockManager = armorLockManager;
         this.teamGui = teamGui;
         this.logger = logger;
         this.messageService = messageService;
@@ -105,6 +111,8 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
                 return handleKit(sender, rest);
             case "team":
                 return handleTeam(sender);
+            case "armor":
+                return handleArmor(sender, rest);
             case "reload":
                 return handleReload(sender);
             case "help":
@@ -122,7 +130,9 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 1) {
-            return filterByPrefix(List.of("revive", "undisguise", "disguise", "kit", "team", "leave", "reload", "help"), args[0]);
+            return filterByPrefix(
+                    List.of("revive", "undisguise", "disguise", "kit", "team", "armor", "leave", "reload", "help"),
+                    args[0]);
         }
 
         return switch (args[0].toLowerCase()) {
@@ -130,6 +140,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
             case "undisguise" -> completeUndisguise(args);
             case "disguise" -> completeDisguise(args);
             case "kit" -> completeKit(args);
+            case "armor" -> completeArmor(args);
             default -> List.of();
         };
     }
@@ -195,7 +206,11 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
                     yield List.of();
                 }
                 case "equip" -> {
-                    if (args.length == 3) yield filterByPrefix(new ArrayList<>(kitManager.getKitNames()), args[2]);
+                    if (args.length == 3) {
+                        List<String> options = new ArrayList<>(kitManager.getKitNames());
+                        options.addAll(teamManager.getTeamNames());
+                        yield filterByPrefix(options, args[2]);
+                    }
                     if (args.length == 4) {
                         List<String> options = new ArrayList<>();
                         options.add("@a");
@@ -211,6 +226,23 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
                 }
                 default -> List.of();
             };
+        }
+        return List.of();
+    }
+
+    private List<String> completeArmor(String[] args) {
+        if (args.length == 2) {
+            return filterByPrefix(List.of("on", "off", "status"), args[1]);
+        }
+        if (args.length == 3) {
+            List<String> options = new ArrayList<>();
+            // "status" only resolves a single player, so don't suggest group targets there.
+            if (!args[1].equalsIgnoreCase("status")) {
+                options.add("@a");
+                options.addAll(teamManager.getTeamNames());
+            }
+            Bukkit.getOnlinePlayers().forEach(p -> options.add(p.getName()));
+            return filterByPrefix(options, args[2]);
         }
         return List.of();
     }
@@ -662,12 +694,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
             if (args[2].equalsIgnoreCase("@a")) {
                 int equipped = 0;
                 for (Player online : Bukkit.getOnlinePlayers()) {
-                    if (plugin.getConfig().getBoolean("kits.clear-before-equip", false)) {
-                        PlayerInventory onlineInventory = online.getInventory();
-                        onlineInventory.clear();
-                        onlineInventory.setArmorContents(null);
-                        onlineInventory.setItemInOffHand(null);
-                    }
+                    clearIfConfigured(online);
                     if (kitManager.equipKit(name, online)) {
                         equipped++;
                     }
@@ -680,25 +707,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
             }
 
             if (teamManager.teamExists(args[2])) {
-                int equipped = 0;
-                for (UUID memberId : teamManager.getTeamMembers(args[2])) {
-                    Player member = Bukkit.getPlayer(memberId);
-                    if (member == null) continue;
-                    if (plugin.getConfig().getBoolean("kits.clear-before-equip", false)) {
-                        PlayerInventory memberInventory = member.getInventory();
-                        memberInventory.clear();
-                        memberInventory.setArmorContents(null);
-                        memberInventory.setItemInOffHand(null);
-                    }
-                    if (kitManager.equipKit(name, member)) {
-                        equipped++;
-                    }
-                }
-                sender.sendMessage(PREFIX.append(Component.text(
-                        messageService.get("commands.kit.equip-team-success",
-                                "name", name, "count", String.valueOf(equipped), "team", args[2]),
-                        NamedTextColor.GREEN)));
-                return true;
+                return equipTeam(sender, name, args[2]);
             }
 
             target = Bukkit.getPlayer(args[2]);
@@ -709,6 +718,12 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
         } else {
+            // A team name takes precedence over an equally named kit, so "/fr kit equip <team>"
+            // equips the team's own assigned kit to all its members instead of the sender.
+            if (teamManager.teamExists(name)) {
+                return equipTeamKit(sender, name);
+            }
+
             if (!(sender instanceof Player)) {
                 sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.kit.players-only"), NamedTextColor.RED)));
                 return true;
@@ -717,12 +732,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
             equippingOther = false;
         }
 
-        if (plugin.getConfig().getBoolean("kits.clear-before-equip", false)) {
-            PlayerInventory inventory = target.getInventory();
-            inventory.clear();
-            inventory.setArmorContents(null);
-            inventory.setItemInOffHand(null);
-        }
+        clearIfConfigured(target);
 
         if (!kitManager.equipKit(name, target)) {
             sender.sendMessage(PREFIX.append(Component.text(
@@ -741,6 +751,61 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    /**
+     * Equips the kit assigned to a team in {@code teams.yml} onto all of its online members.
+     * Reports an error if the team has no kit, or if its kit reference is stale - deleting a kit
+     * via {@code /fr kit delete} leaves the team's reference dangling.
+     */
+    private boolean equipTeamKit(CommandSender sender, String teamName) {
+        String teamKit = teamManager.getTeamKit(teamName).orElse(null);
+        if (teamKit == null) {
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.kit.equip-team-no-kit", "team", teamName), NamedTextColor.RED)));
+            return true;
+        }
+
+        if (!kitManager.getKitNames().contains(teamKit)) {
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.kit.equip-kit-not-found", "name", teamKit), NamedTextColor.RED)));
+            return true;
+        }
+
+        return equipTeam(sender, teamKit, teamName);
+    }
+
+    /** Equips the named kit onto every online member of the team. */
+    private boolean equipTeam(CommandSender sender, String kitName, String teamName) {
+        int equipped = 0;
+        for (UUID memberId : teamManager.getTeamMembers(teamName)) {
+            Player member = Bukkit.getPlayer(memberId);
+            if (member == null) {
+                continue;
+            }
+            clearIfConfigured(member);
+            if (kitManager.equipKit(kitName, member)) {
+                equipped++;
+            }
+        }
+
+        sender.sendMessage(PREFIX.append(Component.text(
+                messageService.get("commands.kit.equip-team-success",
+                        "name", kitName, "count", String.valueOf(equipped), "team", teamName),
+                NamedTextColor.GREEN)));
+        return true;
+    }
+
+    /** Wipes inventory, armor, and offhand, but only when {@code kits.clear-before-equip} is enabled. */
+    private void clearIfConfigured(Player player) {
+        if (!plugin.getConfig().getBoolean("kits.clear-before-equip", false)) {
+            return;
+        }
+
+        PlayerInventory inventory = player.getInventory();
+        inventory.clear();
+        inventory.setArmorContents(new ItemStack[ARMOR_SLOTS]);
+        inventory.setItemInOffHand(null);
+    }
+
     private boolean handleTeam(CommandSender sender) {
         if (!(sender instanceof Player player)) {
             sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.team.players-only"), NamedTextColor.RED)));
@@ -749,6 +814,129 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
 
         teamGui.openMainMenu(player);
         return true;
+    }
+
+    /**
+     * Locks or unlocks armor for a target, mimicking Curse of Binding without enchanting the items.
+     * Locks are stored by UUID and persist across logouts, so a team target locks every member -
+     * including offline ones - while {@code @a} only covers players who are currently online.
+     */
+    private boolean handleArmor(CommandSender sender, String[] args) {
+        if (args.length < 1 || args.length > 2) {
+            sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.armor.usage"), NamedTextColor.RED)));
+            return true;
+        }
+
+        String action = args[0].toLowerCase();
+        if (!action.equals("on") && !action.equals("off") && !action.equals("status")) {
+            sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.armor.usage"), NamedTextColor.RED)));
+            return true;
+        }
+
+        if (action.equals("status")) {
+            return handleArmorStatus(sender, args.length == 2 ? args[1] : null);
+        }
+
+        boolean lock = action.equals("on");
+
+        if (args.length == 1) {
+            if (!(sender instanceof Player player)) {
+                sender.sendMessage(PREFIX.append(Component.text(
+                        messageService.get("commands.armor.players-only"), NamedTextColor.RED)));
+                return true;
+            }
+
+            setArmorLock(player.getUniqueId(), lock);
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get(lock ? "commands.armor.on-self" : "commands.armor.off-self"),
+                    NamedTextColor.GREEN)));
+            return true;
+        }
+
+        String targetArg = args[1];
+
+        if (targetArg.equalsIgnoreCase("@a")) {
+            int count = 0;
+            for (Player online : Bukkit.getOnlinePlayers()) {
+                setArmorLock(online.getUniqueId(), lock);
+                count++;
+            }
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get(lock ? "commands.armor.on-all" : "commands.armor.off-all",
+                            "count", String.valueOf(count)),
+                    NamedTextColor.GREEN)));
+            return true;
+        }
+
+        if (teamManager.teamExists(targetArg)) {
+            int count = 0;
+            for (UUID memberId : teamManager.getTeamMembers(targetArg)) {
+                setArmorLock(memberId, lock);
+                count++;
+            }
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get(lock ? "commands.armor.on-team" : "commands.armor.off-team",
+                            "count", String.valueOf(count), "team", targetArg),
+                    NamedTextColor.GREEN)));
+            return true;
+        }
+
+        Player target = Bukkit.getPlayer(targetArg);
+        if (target == null) {
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.armor.player-not-found", "player", targetArg), NamedTextColor.RED)));
+            return true;
+        }
+
+        setArmorLock(target.getUniqueId(), lock);
+        sender.sendMessage(PREFIX.append(Component.text(
+                messageService.get(lock ? "commands.armor.on-other" : "commands.armor.off-other",
+                        "player", target.getName()),
+                NamedTextColor.GREEN)));
+        return true;
+    }
+
+    private boolean handleArmorStatus(CommandSender sender, @Nullable String targetArg) {
+        if (targetArg != null) {
+            Player target = Bukkit.getPlayer(targetArg);
+            if (target == null) {
+                sender.sendMessage(PREFIX.append(Component.text(
+                        messageService.get("commands.armor.player-not-found", "player", targetArg), NamedTextColor.RED)));
+                return true;
+            }
+
+            boolean locked = armorLockManager.isLocked(target.getUniqueId());
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get(locked ? "commands.armor.status-locked" : "commands.armor.status-unlocked",
+                            "player", target.getName()),
+                    locked ? NamedTextColor.YELLOW : NamedTextColor.GREEN)));
+            return true;
+        }
+
+        List<String> names = new ArrayList<>();
+        for (UUID lockedId : armorLockManager.getLocked()) {
+            Player online = Bukkit.getPlayer(lockedId);
+            names.add(online != null ? online.getName() : lockedId.toString());
+        }
+
+        if (names.isEmpty()) {
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.armor.status-none"), NamedTextColor.YELLOW)));
+            return true;
+        }
+
+        sender.sendMessage(PREFIX.append(Component.text(
+                messageService.get("commands.armor.status-list", "players", String.join(", ", names)),
+                NamedTextColor.GREEN)));
+        return true;
+    }
+
+    private void setArmorLock(UUID playerId, boolean lock) {
+        if (lock) {
+            armorLockManager.lock(playerId);
+        } else {
+            armorLockManager.unlock(playerId);
+        }
     }
 
     private boolean handleLeave(CommandSender sender) {
@@ -780,6 +968,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         messageService.reload(plugin);
         kitManager.loadKits();
         teamManager.reload();
+        armorLockManager.loadLocks();
         sender.sendMessage(PREFIX.append(Component.text(
                 messageService.get("commands.reload.success"), NamedTextColor.GREEN)));
         return true;
@@ -796,6 +985,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.kit-give"), NamedTextColor.YELLOW)));
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.kit-equip"), NamedTextColor.YELLOW)));
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.team"), NamedTextColor.YELLOW)));
+        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.armor"), NamedTextColor.YELLOW)));
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.leave"), NamedTextColor.YELLOW)));
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.reload"), NamedTextColor.YELLOW)));
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.help"), NamedTextColor.YELLOW)));
