@@ -7,6 +7,8 @@ kits:
   clear-before-give: false
   clear-before-equip: true
 
+exempt-players: []
+
 armor:
   # Show an action bar message when a locked player tries to take their armor off.
   notify-blocked: true

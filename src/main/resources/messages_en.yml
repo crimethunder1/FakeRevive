@@ -1,6 +1,6 @@
 commands:
   fr:
-    usage: "Usage: /fr <revive|undisguise|disguise|kit|team|armor|pool|leave|reload|help>"
+    usage: "Usage: /fr <revive|undisguise|disguise|exempt|kit|team|armor|pool|leave|reload|help>"
     no-permission: "You don't have permission to use this command."
   revive:
     usage: "Usage: /fr revive <player/@a/<team>> [kit]"
@@ -23,12 +23,24 @@ commands:
     success-other: "You removed {player}'s disguise."
     success-all: "All disguises removed ({count} players)."
   disguise:
-    usage: "Usage: /fr disguise <player|@p|@r> [MinecraftName]"
+    usage: "Usage: /fr disguise <player|@a|@p|@r> [MinecraftName]"
     not-found: "Player not found."
     pool-exhausted: "The fake name pool is exhausted."
     success: "{player} has been disguised as \"{name}\"."
     name-not-found: "No Minecraft account found with name \"{name}\"."
     success-multiple: "{count} players have been disguised."
+    success-all: "{count} players disguised, {exempt} exempt, {already} already disguised."
+    pool-exhausted-all: "The name pool ran empty - {count} players were not disguised. Fresh names are being fetched from Mojang in the background."
+  exempt:
+    usage: "Usage: /fr exempt <add|remove|list> [player]"
+    added: "{player} is now exempt from /fr disguise @a."
+    already-exempt: "{player} is already on the exempt list."
+    removed: "{player} has been removed from the exempt list."
+    not-exempt: "{player} is not on the exempt list."
+    config-only: "{player} is listed in config.yml and can only be removed there."
+    player-not-found: "Player \"{player}\" not found."
+    list-empty: "No players are exempt."
+    list-format: "Exempt players: {players}"
   kit:
     usage: "Usage: /fr kit <save|list|give|equip|delete>"
     players-only: "Only players can save kits."
@@ -100,7 +112,8 @@ commands:
     header: "Help"
     revive: "/fr revive <player/@a/team> [kit]: Revive a player"
     undisguise: "/fr undisguise [player]: Remove a player's disguise"
-    disguise: "/fr disguise <player|@p|@r> [MinecraftName]: Manually disguise a player"
+    disguise: "/fr disguise <player|@a|@p|@r> [MinecraftName]: Manually disguise a player"
+    exempt: "/fr exempt <add|remove|list> [player]: Manage players skipped by /fr disguise @a"
     kit-save: "/fr kit save <name>: Save inventory as a kit"
     kit-list: "/fr kit list: List all kits"
     kit-delete: "/fr kit delete <name>: Delete a kit"

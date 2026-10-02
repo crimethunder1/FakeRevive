@@ -7,12 +7,44 @@ description: On death, fakes a leave message and disguises players on revive.
 commands:
   fr:
     description: Main command for FakeRevive.
-    usage: /fr <revive|undisguise|disguise|kit|team|armor|pool|leave|reload|help>
+    usage: /fr <revive|undisguise|disguise|exempt|kit|team|armor|pool|leave|reload|help>
     aliases: [fakerevive]
 permissions:
   fakerevive.admin:
     description: Grants access to all /fr subcommands.
     default: op
+    children:
+      fakerevive.revive: true
+      fakerevive.disguise: true
+      fakerevive.kit: true
+      fakerevive.team: true
+      fakerevive.armor: true
+      fakerevive.pool: true
+      fakerevive.reload: true
+  fakerevive.revive:
+    description: Allows reviving players with /fr revive.
+    default: op
+  fakerevive.disguise:
+    description: Allows /fr disguise and /fr undisguise.
+    default: op
+  fakerevive.kit:
+    description: Allows all /fr kit subcommands.
+    default: op
+  fakerevive.team:
+    description: Allows opening the team GUI with /fr team.
+    default: op
+  fakerevive.armor:
+    description: Allows /fr armor, including status.
+    default: op
+  fakerevive.pool:
+    description: Allows /fr pool, including refill.
+    default: op
+  fakerevive.reload:
+    description: Allows reloading the plugin with /fr reload.
+    default: op
   fakerevive.leave:
     description: Allows players to leave their team with /fr leave.
     default: true
+  fakerevive.exempt:
+    description: Excludes the player from /fr disguise @a.
+    default: false

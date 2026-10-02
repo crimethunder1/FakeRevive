@@ -1,6 +1,6 @@
 commands:
   fr:
-    usage: "Utilisation: /fr <revive|undisguise|disguise|kit|team|armor|pool|leave|reload|help>"
+    usage: "Utilisation: /fr <revive|undisguise|disguise|exempt|kit|team|armor|pool|leave|reload|help>"
     no-permission: "Vous n'avez pas la permission d'utiliser cette commande."
   revive:
     usage: "Utilisation : /fr revive <joueur/@a/<équipe>> [kit]"
@@ -23,12 +23,24 @@ commands:
     success-other: "Vous avez retiré le déguisement de {player}."
     success-all: "Tous les déguisements ont été retirés ({count} joueurs)."
   disguise:
-    usage: "Utilisation : /fr disguise <joueur|@p|@r> [NomMinecraft]"
+    usage: "Utilisation : /fr disguise <joueur|@a|@p|@r> [NomMinecraft]"
     not-found: "Joueur introuvable."
     pool-exhausted: "Le pool de faux noms est épuisé."
     success: "{player} a été déguisé en \"{name}\"."
     name-not-found: "Aucun compte Minecraft trouvé avec le nom \"{name}\"."
     success-multiple: "{count} joueurs ont été déguisés."
+    success-all: "{count} joueurs deguises, {exempt} exemptes, {already} deja deguises."
+    pool-exhausted-all: "Le pool de noms est vide - {count} joueurs n'ont pas ete deguises. De nouveaux noms sont recuperes depuis Mojang en arriere-plan."
+  exempt:
+    usage: "Utilisation : /fr exempt <add|remove|list> [joueur]"
+    added: "{player} est maintenant exempte de /fr disguise @a."
+    already-exempt: "{player} est deja sur la liste d'exemption."
+    removed: "{player} a ete retire de la liste d'exemption."
+    not-exempt: "{player} n'est pas sur la liste d'exemption."
+    config-only: "{player} figure dans config.yml et ne peut etre retire que la."
+    player-not-found: "Joueur \"{player}\" introuvable."
+    list-empty: "Aucun joueur n'est exempte."
+    list-format: "Joueurs exemptes : {players}"
   kit:
     usage: "Utilisation : /fr kit <save|list|give|equip|delete>"
     players-only: "Seuls les joueurs peuvent sauvegarder des kits."
@@ -100,7 +112,8 @@ commands:
     header: "Aide"
     revive: "/fr revive <joueur/@a/équipe> [kit]: Réanimer un joueur"
     undisguise: "/fr undisguise [joueur]: Retirer un déguisement"
-    disguise: "/fr disguise <joueur|@p|@r> [NomMinecraft]: Déguiser manuellement un joueur"
+    disguise: "/fr disguise <joueur|@a|@p|@r> [NomMinecraft]: Déguiser manuellement un joueur"
+    exempt: "/fr exempt <add|remove|list> [joueur]: Gerer les joueurs ignores par /fr disguise @a"
     kit-save: "/fr kit save <nom>: Sauvegarder l'inventaire comme kit"
     kit-list: "/fr kit list: Afficher tous les kits"
     kit-delete: "/fr kit delete <nom>: Supprimer un kit"

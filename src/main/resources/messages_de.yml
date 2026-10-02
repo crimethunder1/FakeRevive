@@ -1,6 +1,6 @@
 commands:
   fr:
-    usage: "Benutzung: /fr <revive|undisguise|disguise|kit|team|armor|pool|leave|reload|help>"
+    usage: "Benutzung: /fr <revive|undisguise|disguise|exempt|kit|team|armor|pool|leave|reload|help>"
     no-permission: "Du hast keine Berechtigung für diesen Befehl."
   revive:
     usage: "Benutzung: /fr revive <Spieler/@a/<Team>> [Kit]"
@@ -23,12 +23,24 @@ commands:
     success-other: "Du hast {player} die Verkleidung entfernt."
     success-all: "Alle Verkleidungen wurden entfernt ({count} Spieler)."
   disguise:
-    usage: "Benutzung: /fr disguise <Spieler|@p|@r> [MinecraftName]"
+    usage: "Benutzung: /fr disguise <Spieler|@a|@p|@r> [MinecraftName]"
     not-found: "Dieser Spieler wurde nicht gefunden."
     pool-exhausted: "Der Fake-Namen-Pool ist erschöpft."
     success: "{player} wurde als \"{name}\" verkleidet."
     name-not-found: "Kein Minecraft-Account mit dem Namen \"{name}\" gefunden."
     success-multiple: "{count} Spieler wurden verkleidet."
+    success-all: "{count} Spieler verkleidet, {exempt} ausgenommen, {already} bereits verkleidet."
+    pool-exhausted-all: "Der Namen-Pool ist leer - {count} Spieler wurden nicht verkleidet. Neue Namen werden im Hintergrund von Mojang geholt."
+  exempt:
+    usage: "Benutzung: /fr exempt <add|remove|list> [Spieler]"
+    added: "{player} ist jetzt von /fr disguise @a ausgenommen."
+    already-exempt: "{player} steht bereits auf der Ausnahmeliste."
+    removed: "{player} wurde von der Ausnahmeliste entfernt."
+    not-exempt: "{player} steht nicht auf der Ausnahmeliste."
+    config-only: "{player} steht in der config.yml und kann nur dort entfernt werden."
+    player-not-found: "Spieler \"{player}\" wurde nicht gefunden."
+    list-empty: "Es sind keine Spieler ausgenommen."
+    list-format: "Ausgenommene Spieler: {players}"
   kit:
     usage: "Benutzung: /fr kit <save|list|give|equip|delete>"
     players-only: "Nur Spieler können Kits speichern."
@@ -100,7 +112,8 @@ commands:
     header: "Hilfe"
     revive: "/fr revive <Spieler/@a/Team> [Kit]: Spieler wiederbeleben"
     undisguise: "/fr undisguise [Spieler]: Verkleidung entfernen"
-    disguise: "/fr disguise <Spieler|@p|@r> [MinecraftName]: Spieler manuell verkleiden"
+    disguise: "/fr disguise <Spieler|@a|@p|@r> [MinecraftName]: Spieler manuell verkleiden"
+    exempt: "/fr exempt <add|remove|list> [Spieler]: Ausnahmen für /fr disguise @a verwalten"
     kit-save: "/fr kit save <Name>: Inventar als Kit speichern"
     kit-list: "/fr kit list: Alle Kits anzeigen"
     kit-delete: "/fr kit delete <Name>: Kit löschen"

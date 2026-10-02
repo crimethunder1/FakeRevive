@@ -8,6 +8,7 @@ import com.fakerevive.disguise.FakeNamePoolReplenisher;
 import com.fakerevive.disguise.MojangIdentityFetcher;
 import com.fakerevive.disguise.PlayerDisguiseService;
 import com.fakerevive.disguise.ReplenishSettings;
+import com.fakerevive.exempt.ExemptManager;
 import com.fakerevive.kit.KitManager;
 import com.fakerevive.listener.FakeLeaveListener;
 import com.fakerevive.message.MessageService;
@@ -18,6 +19,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -47,6 +49,20 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
     private static final int ARMOR_SLOTS = 4;
     private static final int NEARBY_RADIUS_SQUARED = 16 * 16;
 
+    private static final String PERMISSION_REVIVE = "fakerevive.revive";
+    private static final String PERMISSION_DISGUISE = "fakerevive.disguise";
+    private static final String PERMISSION_KIT = "fakerevive.kit";
+    private static final String PERMISSION_TEAM = "fakerevive.team";
+    private static final String PERMISSION_ARMOR = "fakerevive.armor";
+    private static final String PERMISSION_POOL = "fakerevive.pool";
+    private static final String PERMISSION_RELOAD = "fakerevive.reload";
+    private static final String PERMISSION_LEAVE = "fakerevive.leave";
+    private static final List<String> ALL_PERMISSIONS = List.of(
+            PERMISSION_REVIVE, PERMISSION_DISGUISE, PERMISSION_KIT, PERMISSION_TEAM,
+            PERMISSION_ARMOR, PERMISSION_POOL, PERMISSION_RELOAD, PERMISSION_LEAVE);
+    private static final List<String> SUBCOMMANDS = List.of(
+            "revive", "undisguise", "disguise", "exempt", "kit", "team", "armor", "pool", "leave", "reload", "help");
+
     private final JavaPlugin plugin;
     private final FakeLeaveListener fakeLeaveListener;
     private final FakeNamePool fakeNamePool;
@@ -56,6 +72,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
     private final KitManager kitManager;
     private final TeamManager teamManager;
     private final ArmorLockManager armorLockManager;
+    private final ExemptManager exemptManager;
     private final TeamGui teamGui;
     private final FakeNamePoolReplenisher replenisher;
     private final Logger logger;
@@ -66,7 +83,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
     public FakeReviveCommand(JavaPlugin plugin, FakeLeaveListener fakeLeaveListener, FakeNamePool fakeNamePool,
                               ActiveDisguiseRegistry activeDisguiseRegistry, PlayerDisguiseService playerDisguiseService,
                               MojangIdentityFetcher identityFetcher, KitManager kitManager, TeamManager teamManager,
-                              ArmorLockManager armorLockManager, TeamGui teamGui,
+                              ArmorLockManager armorLockManager, ExemptManager exemptManager, TeamGui teamGui,
                               FakeNamePoolReplenisher replenisher, Logger logger,
                               MessageService messageService) {
         this.plugin = plugin;
@@ -78,6 +95,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         this.kitManager = kitManager;
         this.teamManager = teamManager;
         this.armorLockManager = armorLockManager;
+        this.exemptManager = exemptManager;
         this.teamGui = teamGui;
         this.replenisher = replenisher;
         this.logger = logger;
@@ -95,20 +113,28 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
             return handleLeave(sender);
         }
 
-        if (!sender.hasPermission("fakerevive.admin")) {
-            sender.sendMessage(Component.text(messageService.get("commands.fr.no-permission"), NamedTextColor.RED));
+        String subcommand = args[0].toLowerCase();
+        if (!SUBCOMMANDS.contains(subcommand)) {
+            sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.fr.usage"), NamedTextColor.RED)));
+            return true;
+        }
+
+        if (!canUseSubcommand(sender, subcommand)) {
+            sendNoPermission(sender);
             return true;
         }
 
         String[] rest = Arrays.copyOfRange(args, 1, args.length);
 
-        switch (args[0].toLowerCase()) {
+        switch (subcommand) {
             case "revive":
                 return handleRevive(sender, rest);
             case "undisguise":
                 return handleUndisguise(sender, rest);
             case "disguise":
                 return handleDisguise(sender, rest);
+            case "exempt":
+                return handleExempt(sender, rest);
             case "kit":
                 return handleKit(sender, rest);
             case "team":
@@ -129,25 +155,59 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (!sender.hasPermission("fakerevive.admin")) {
+        if (args.length == 1) {
+            List<String> allowedSubcommands = SUBCOMMANDS.stream()
+                    .filter(subcommand -> canUseSubcommand(sender, subcommand))
+                    .collect(Collectors.toList());
+            return filterByPrefix(allowedSubcommands, args[0]);
+        }
+
+        String subcommand = args[0].toLowerCase();
+        if (!canUseSubcommand(sender, subcommand)) {
             return List.of();
         }
 
-        if (args.length == 1) {
-            return filterByPrefix(
-                    List.of("revive", "undisguise", "disguise", "kit", "team", "armor", "pool", "leave", "reload", "help"),
-                    args[0]);
-        }
-
-        return switch (args[0].toLowerCase()) {
+        return switch (subcommand) {
             case "revive" -> completeRevive(args);
             case "undisguise" -> completeUndisguise(args);
             case "disguise" -> completeDisguise(args);
+            case "exempt" -> completeExempt(args);
             case "kit" -> completeKit(args);
             case "armor" -> completeArmor(args);
             case "pool" -> args.length == 2 ? filterByPrefix(List.of("refill"), args[1]) : List.of();
             default -> List.of();
         };
+    }
+
+    private boolean canUseSubcommand(CommandSender sender, String subcommand) {
+        if (subcommand.equals("help")) {
+            return hasAnyPermission(sender);
+        }
+        String permission = permissionForSubcommand(subcommand);
+        return permission != null && sender.hasPermission(permission);
+    }
+
+    @Nullable
+    private static String permissionForSubcommand(String subcommand) {
+        return switch (subcommand) {
+            case "revive" -> PERMISSION_REVIVE;
+            case "undisguise", "disguise", "exempt" -> PERMISSION_DISGUISE;
+            case "kit" -> PERMISSION_KIT;
+            case "team" -> PERMISSION_TEAM;
+            case "armor" -> PERMISSION_ARMOR;
+            case "pool" -> PERMISSION_POOL;
+            case "reload" -> PERMISSION_RELOAD;
+            case "leave" -> PERMISSION_LEAVE;
+            default -> null;
+        };
+    }
+
+    private boolean hasAnyPermission(CommandSender sender) {
+        return ALL_PERMISSIONS.stream().anyMatch(sender::hasPermission);
+    }
+
+    private void sendNoPermission(CommandSender sender) {
+        sender.sendMessage(Component.text(messageService.get("commands.fr.no-permission"), NamedTextColor.RED));
     }
 
     private List<String> completeRevive(String[] args) {
@@ -182,10 +242,29 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
     private List<String> completeDisguise(String[] args) {
         if (args.length == 2) {
             List<String> options = new ArrayList<>();
+            options.add("@a");
             options.add("@p");
             options.add("@r");
             Bukkit.getOnlinePlayers().forEach(p -> options.add(p.getName()));
             return filterByPrefix(options, args[1]);
+        }
+        return List.of();
+    }
+
+    private List<String> completeExempt(String[] args) {
+        if (args.length == 2) {
+            return filterByPrefix(List.of("add", "remove", "list"), args[1]);
+        }
+        if (args.length == 3) {
+            return switch (args[1].toLowerCase()) {
+                case "add" -> {
+                    List<String> options = new ArrayList<>();
+                    Bukkit.getOnlinePlayers().forEach(online -> options.add(online.getName()));
+                    yield filterByPrefix(options, args[2]);
+                }
+                case "remove" -> filterByPrefix(new ArrayList<>(exemptManager.getStoredPlayers().values()), args[2]);
+                default -> List.of();
+            };
         }
         return List.of();
     }
@@ -506,6 +585,14 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
 
         String customName = args.length == 2 ? args[1] : null;
 
+        if (args[0].equalsIgnoreCase("@a")) {
+            if (customName != null) {
+                sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.disguise.usage"), NamedTextColor.RED)));
+                return true;
+            }
+            return disguiseAllOnline(sender);
+        }
+
         if (args[0].equalsIgnoreCase("@p")) {
             if (!(sender instanceof Player senderPlayer)) {
                 sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.revive.players-only"), NamedTextColor.RED)));
@@ -567,6 +654,143 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
 
         disguiseWithRandomIdentity(target, null, sender);
         return true;
+    }
+
+    private boolean disguiseAllOnline(CommandSender sender) {
+        int disguisedCount = 0;
+        int exemptCount = 0;
+        int alreadyDisguisedCount = 0;
+        int notDisguisedCount = 0;
+        boolean poolExhausted = false;
+
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            if (exemptManager.isExempt(online)) {
+                exemptCount++;
+                continue;
+            }
+            if (fakeLeaveListener.isFakedOut(online.getUniqueId())) {
+                continue;
+            }
+            if (activeDisguiseRegistry.getIdentity(online.getUniqueId()).isPresent()) {
+                alreadyDisguisedCount++;
+                continue;
+            }
+            if (poolExhausted || !tryDisguiseWithRandomIdentity(online, sender)) {
+                poolExhausted = true;
+                notDisguisedCount++;
+                continue;
+            }
+            disguisedCount++;
+        }
+
+        sender.sendMessage(PREFIX.append(Component.text(
+                messageService.get("commands.disguise.success-all",
+                        "count", String.valueOf(disguisedCount),
+                        "exempt", String.valueOf(exemptCount),
+                        "already", String.valueOf(alreadyDisguisedCount)),
+                NamedTextColor.GREEN)));
+        if (poolExhausted) {
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.disguise.pool-exhausted-all", "count", String.valueOf(notDisguisedCount)),
+                    NamedTextColor.RED)));
+        }
+        return true;
+    }
+
+    private boolean handleExempt(CommandSender sender, String[] args) {
+        if (args.length == 1 && args[0].equalsIgnoreCase("list")) {
+            return handleExemptList(sender);
+        }
+
+        if (args.length != 2) {
+            sendExemptUsage(sender);
+            return true;
+        }
+
+        String action = args[0].toLowerCase();
+        String playerName = args[1];
+        if (action.equals("add")) {
+            return handleExemptAdd(sender, playerName);
+        }
+        if (action.equals("remove")) {
+            return handleExemptRemove(sender, playerName);
+        }
+
+        sendExemptUsage(sender);
+        return true;
+    }
+
+    private boolean handleExemptAdd(CommandSender sender, String playerName) {
+        OfflinePlayer target = Bukkit.getPlayerExact(playerName);
+        if (target == null) {
+            target = Bukkit.getOfflinePlayerIfCached(playerName);
+        }
+        if (target == null || target.getName() == null) {
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.exempt.player-not-found", "player", playerName), NamedTextColor.RED)));
+            return true;
+        }
+
+        String targetName = target.getName();
+        if (!exemptManager.add(target.getUniqueId(), targetName)) {
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.exempt.already-exempt", "player", targetName), NamedTextColor.YELLOW)));
+            return true;
+        }
+
+        sender.sendMessage(PREFIX.append(Component.text(
+                messageService.get("commands.exempt.added", "player", targetName), NamedTextColor.GREEN)));
+        return true;
+    }
+
+    private boolean handleExemptRemove(CommandSender sender, String playerName) {
+        Optional<UUID> storedPlayerId = exemptManager.findStoredByName(playerName);
+        if (storedPlayerId.isEmpty()) {
+            Player online = Bukkit.getPlayerExact(playerName);
+            if (online != null && exemptManager.isStored(online.getUniqueId())) {
+                storedPlayerId = Optional.of(online.getUniqueId());
+            }
+        }
+
+        if (storedPlayerId.isPresent()) {
+            String storedName = exemptManager.getStoredPlayers().getOrDefault(storedPlayerId.get(), playerName);
+            exemptManager.remove(storedPlayerId.get());
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.exempt.removed", "player", storedName), NamedTextColor.GREEN)));
+            return true;
+        }
+
+        if (exemptManager.isConfigured(playerName)) {
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.exempt.config-only", "player", playerName), NamedTextColor.YELLOW)));
+            return true;
+        }
+
+        sender.sendMessage(PREFIX.append(Component.text(
+                messageService.get("commands.exempt.not-exempt", "player", playerName), NamedTextColor.RED)));
+        return true;
+    }
+
+    private boolean handleExemptList(CommandSender sender) {
+        List<String> names = new ArrayList<>(exemptManager.getStoredPlayers().values());
+        for (String configuredName : exemptManager.getConfiguredNames()) {
+            names.add(configuredName + " (config.yml)");
+        }
+
+        if (names.isEmpty()) {
+            sender.sendMessage(PREFIX.append(Component.text(
+                    messageService.get("commands.exempt.list-empty"), NamedTextColor.YELLOW)));
+            return true;
+        }
+
+        sender.sendMessage(PREFIX.append(Component.text(
+                messageService.get("commands.exempt.list-format", "players", String.join(", ", names)),
+                NamedTextColor.GREEN)));
+        return true;
+    }
+
+    private void sendExemptUsage(CommandSender sender) {
+        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.exempt.usage"), NamedTextColor.RED)));
     }
 
     private boolean handleKit(CommandSender sender, String[] args) {
@@ -1011,6 +1235,7 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         kitManager.loadKits();
         teamManager.reload();
         armorLockManager.loadLocks();
+        exemptManager.load();
         replenisher.applySettings(ReplenishSettings.fromConfig(plugin.getConfig()));
         sender.sendMessage(PREFIX.append(Component.text(
                 messageService.get("commands.reload.success"), NamedTextColor.GREEN)));
@@ -1045,21 +1270,28 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
 
     private boolean handleHelp(CommandSender sender) {
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.header"), NamedTextColor.GOLD)));
-        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.revive"), NamedTextColor.YELLOW)));
-        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.undisguise"), NamedTextColor.YELLOW)));
-        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.disguise"), NamedTextColor.YELLOW)));
-        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.kit-save"), NamedTextColor.YELLOW)));
-        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.kit-list"), NamedTextColor.YELLOW)));
-        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.kit-delete"), NamedTextColor.YELLOW)));
-        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.kit-give"), NamedTextColor.YELLOW)));
-        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.kit-equip"), NamedTextColor.YELLOW)));
-        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.team"), NamedTextColor.YELLOW)));
-        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.armor"), NamedTextColor.YELLOW)));
-        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.pool"), NamedTextColor.YELLOW)));
-        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.leave"), NamedTextColor.YELLOW)));
-        sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.reload"), NamedTextColor.YELLOW)));
+        sendHelpLine(sender, PERMISSION_REVIVE, "commands.help.revive");
+        sendHelpLine(sender, PERMISSION_DISGUISE, "commands.help.undisguise");
+        sendHelpLine(sender, PERMISSION_DISGUISE, "commands.help.disguise");
+        sendHelpLine(sender, PERMISSION_DISGUISE, "commands.help.exempt");
+        sendHelpLine(sender, PERMISSION_KIT, "commands.help.kit-save");
+        sendHelpLine(sender, PERMISSION_KIT, "commands.help.kit-list");
+        sendHelpLine(sender, PERMISSION_KIT, "commands.help.kit-delete");
+        sendHelpLine(sender, PERMISSION_KIT, "commands.help.kit-give");
+        sendHelpLine(sender, PERMISSION_KIT, "commands.help.kit-equip");
+        sendHelpLine(sender, PERMISSION_TEAM, "commands.help.team");
+        sendHelpLine(sender, PERMISSION_ARMOR, "commands.help.armor");
+        sendHelpLine(sender, PERMISSION_POOL, "commands.help.pool");
+        sendHelpLine(sender, PERMISSION_LEAVE, "commands.help.leave");
+        sendHelpLine(sender, PERMISSION_RELOAD, "commands.help.reload");
         sender.sendMessage(PREFIX.append(Component.text(messageService.get("commands.help.help"), NamedTextColor.YELLOW)));
         return true;
+    }
+
+    private void sendHelpLine(CommandSender sender, String permission, String messageKey) {
+        if (sender.hasPermission(permission)) {
+            sender.sendMessage(PREFIX.append(Component.text(messageService.get(messageKey), NamedTextColor.YELLOW)));
+        }
     }
 
     /**
@@ -1147,6 +1379,19 @@ public class FakeReviveCommand implements CommandExecutor, TabCompleter {
         }
 
         applyDisguiseIdentity(target, identity.get(), kitName, resultSender);
+    }
+
+    private boolean tryDisguiseWithRandomIdentity(Player target, CommandSender resultSender) {
+        Optional<FakeIdentity> identity = fakeNamePool.assignRandomIdentity();
+        replenisher.requestTopUp();
+
+        if (identity.isEmpty()) {
+            logger.warning(messageService.get("events.pool-exhausted", "player", target.getName()));
+            return false;
+        }
+
+        applyDisguiseIdentity(target, identity.get(), null, resultSender);
+        return true;
     }
 
     private void applyDisguiseIdentity(Player target, FakeIdentity fakeIdentity, @Nullable String kitName, CommandSender resultSender) {

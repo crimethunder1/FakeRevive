@@ -34,9 +34,13 @@ until their next death.
 
 ## Commands
 
-All subcommands of `/fr` (alias `/fakerevive`) require the `fakerevive.admin`
-permission (default: `op`), except `/fr leave`, which only requires
-`fakerevive.leave` (default: everyone).
+Each subcommand of `/fr` (alias `/fakerevive`) has its own permission node, so
+a permissions plugin such as LuckPerms can hand single commands to helpers
+without granting full admin rights. `fakerevive.admin` (default: `op`) includes
+every command node; `/fr leave` only requires `fakerevive.leave` (default:
+everyone). `/fr help` is available to anyone holding at least one of the nodes
+and lists only the commands they may use. Tab completion likewise only
+suggests permitted subcommands.
 
 | Command | Description |
 |---|---|
@@ -44,6 +48,10 @@ permission (default: `op`), except `/fr leave`, which only requires
 | `/fr revive <player> <MinecraftName> [kit]` | Revives a player disguised as a specific real Minecraft account (name and skin fetched from Mojang). |
 | `/fr undisguise [@a\|player\|fakename]` | Removes a disguise. `@a` removes all active disguises. Accepts both real and fake player names. |
 | `/fr disguise <player\|@p\|@r> [MinecraftName]` | Assigns a random disguise, or a specific real Minecraft account's identity if a name is given. `@p` targets nearby players (16 blocks), `@r` a random online player. |
+| `/fr disguise @a` | Gives every online player a random disguise, skipping exempt players, faked-out players, and players who are already disguised. A `MinecraftName` is not allowed here. See "Exempt players". |
+| `/fr exempt add <player>` | Adds an online player, or an offline player who has joined the server before, to the stored exempt list. |
+| `/fr exempt remove <player>` | Removes a player from the stored exempt list. Names from `exempt-players` in `config.yml` can only be removed there. |
+| `/fr exempt list` | Lists all exempt players, both stored and from `config.yml`. |
 | `/fr kit save <name>` | Saves current inventory (items, armor, offhand) as a named kit. |
 | `/fr kit list` | Lists all saved kits. |
 | `/fr kit delete <name>` | Deletes a saved kit. |
@@ -55,13 +63,28 @@ permission (default: `op`), except `/fr leave`, which only requires
 | `/fr armor status [player]` | Shows who currently has an armor lock. |
 | `/fr pool [refill]` | Shows how many fake names are still available, how many have been used, and whether a refill is running. `refill` starts one immediately. |
 | `/fr leave` | Leaves your own team. |
-| `/fr reload` | Reloads `config.yml`, the message files, all kits, teams, and armor locks. |
+| `/fr reload` | Reloads `config.yml`, the message files, all kits, teams, armor locks, and both exempt lists. |
 | `/fr help` | Shows all available commands. |
 
 When adding players to a team from the GUI, you can type one or more names,
 or a selector: `@a` (everyone online), `@p` (players near the team manager),
 `@r` (one random online player), or `@split` (splits everyone online
 roughly in half into the team).
+
+### Permissions
+
+| Node | Grants | Default |
+|---|---|---|
+| `fakerevive.admin` | All nodes below except `fakerevive.leave` (children: `revive`, `disguise`, `kit`, `team`, `armor`, `pool`, `reload`). | `op` |
+| `fakerevive.revive` | `/fr revive` | `op` |
+| `fakerevive.disguise` | `/fr disguise`, `/fr undisguise`, and `/fr exempt` | `op` |
+| `fakerevive.kit` | `/fr kit` with all subcommands (`save`, `list`, `delete`, `give`, `equip`) | `op` |
+| `fakerevive.team` | `/fr team` (team management GUI) | `op` |
+| `fakerevive.armor` | `/fr armor`, including `status` | `op` |
+| `fakerevive.pool` | `/fr pool`, including `refill` | `op` |
+| `fakerevive.reload` | `/fr reload` | `op` |
+| `fakerevive.leave` | `/fr leave` | everyone |
+| `fakerevive.exempt` | Excludes the holder from `/fr disguise @a`. Not part of `fakerevive.admin`, so operators are not exempt automatically. | `false` |
 
 ## Configuration
 
@@ -76,6 +99,8 @@ kill-message:
 kits:
   clear-before-give: false
   clear-before-equip: true
+
+exempt-players: []
 
 armor:
   notify-blocked: true
@@ -95,6 +120,7 @@ fake-names:
 * `kill-message.enabled`: show kill messages with fake names substituted in (default: `true`)
 * `kits.clear-before-give`: clear the target's inventory before `/fr kit give` (default: `false`)
 * `kits.clear-before-equip`: clear all of the target's slots before `/fr kit equip` (default: `true`)
+* `exempt-players`: player names that `/fr disguise @a` always skips, case-insensitive (default: empty). Entries here can't be removed with `/fr exempt remove`; edit the file and run `/fr reload`.
 * `armor.notify-blocked`: show an action bar message when a locked player tries to take their armor off (default: `true`)
 * `fake-names.auto-refill`: keep pulling fresh identities from Mojang in the background (default: `true`). Turning this off will eventually leave the pool empty, since used names are never reused.
 * `fake-names.target-pool-size`: how many unused identities to keep ready (default: `60`)
@@ -160,6 +186,34 @@ Because fake names are shown this way, `/fr undisguise` and
   fake names, since it operates on actual connected player names rather
   than the visual disguise.
 
+## Exempt players
+
+`/fr disguise @a` disguises every online player at once. A player is
+skipped if any of these three sources marks them as exempt:
+
+1. **Stored list**: maintained in game with `/fr exempt add <player>` and
+   `/fr exempt remove <player>`, saved per player UUID in
+   `plugins/FakeRevive/exempt-players.yml`. Entries keep working after a
+   name change.
+2. **Config list**: the `exempt-players` list in `config.yml`, edited by
+   hand. Names are matched case-insensitively. `/fr exempt list` shows these
+   entries too, marked with `(config.yml)`, but they can only be removed in
+   the file.
+3. **Permission**: anyone holding `fakerevive.exempt`. This node defaults to
+   `false` and is not a child of `fakerevive.admin`, so it has to be granted
+   explicitly.
+
+Both lists are reloaded on startup and with `/fr reload`.
+
+Besides exempt players, `/fr disguise @a` also skips players who are
+faked out (dead and waiting in spectator mode for a revive) and players
+who are already disguised, so no names are wasted. The sender gets a summary
+with the number of disguised, exempt, and already disguised players. If the
+name pool runs dry partway through, the remaining players are left as they
+are and a single message reports how many were not disguised.
+
+`/fr disguise` with a player name, `@p`, or `@r` ignores the exempt lists.
+
 ## Kit system
 
 Kits are stored in `plugins/FakeRevive/kits.yml`.
@@ -202,7 +256,7 @@ Requirements: JDK 21, Maven.
 mvn package
 ```
 
-The built plugin will be at `target/fakerevive-1.0.0.jar`, ready to be
+The built plugin will be at `target/fakerevive-1.2.0.jar`, ready to be
 copied into a Paper server's `plugins` folder.
 
 Under JDK 25, the build (including `mvn test`) may fail with
