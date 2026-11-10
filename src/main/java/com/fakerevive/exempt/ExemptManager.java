@@ -1,13 +1,11 @@
 package com.fakerevive.exempt;
 
 import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.InvalidConfigurationException;
+import com.fakerevive.storage.YamlFileStore;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -17,19 +15,18 @@ import java.util.Optional;
 import java.util.UUID;
 
 public class ExemptManager {
-
     public static final String PERMISSION_EXEMPT = "fakerevive.exempt";
     private static final String CONFIG_KEY = "exempt-players";
     private static final String FILE_SECTION = "players";
 
     private final JavaPlugin plugin;
-    private final File exemptFile;
+    private final YamlFileStore store;
     private final Map<UUID, String> storedPlayers = new LinkedHashMap<>();
     private final Map<String, String> configuredNames = new LinkedHashMap<>();
 
     public ExemptManager(JavaPlugin plugin) {
         this.plugin = plugin;
-        this.exemptFile = new File(plugin.getDataFolder(), "exempt-players.yml");
+        this.store = new YamlFileStore(plugin.getDataFolder().toPath().resolve("exempt-players.yml"), plugin.getLogger());
     }
 
     public void load() {
@@ -49,18 +46,7 @@ public class ExemptManager {
 
     private void loadStoredPlayers() {
         storedPlayers.clear();
-        if (!exemptFile.exists()) {
-            return;
-        }
-
-        YamlConfiguration exemptConfig = new YamlConfiguration();
-        try {
-            exemptConfig.load(exemptFile);
-        } catch (IOException | InvalidConfigurationException exception) {
-            plugin.getLogger().warning("Failed to load exempt-players.yml: " + exception.getMessage());
-            return;
-        }
-
+        YamlConfiguration exemptConfig = store.load();
         ConfigurationSection section = exemptConfig.getConfigurationSection(FILE_SECTION);
         if (section == null) {
             return;
@@ -128,12 +114,7 @@ public class ExemptManager {
             section.set(entry.getKey().toString(), entry.getValue());
         }
 
-        try {
-            plugin.getDataFolder().mkdirs();
-            exemptConfig.save(exemptFile);
-        } catch (IOException exception) {
-            plugin.getLogger().warning("Failed to save exempt-players.yml: " + exception.getMessage());
-        }
+        store.save(exemptConfig);
     }
 
     private static String normalize(String playerName) {

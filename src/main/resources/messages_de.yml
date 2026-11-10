@@ -2,6 +2,7 @@ commands:
   fr:
     usage: "Benutzung: /fr <revive|undisguise|disguise|exempt|kit|team|armor|pool|leave|reload|help>"
     no-permission: "Du hast keine Berechtigung für diesen Befehl."
+    unexpected-error: "Es ist ein unerwarteter Fehler aufgetreten. Details stehen in der Server-Konsole."
   revive:
     usage: "Benutzung: /fr revive <Spieler/@a/<Team>> [Kit]"
     not-found: "Dieser Spieler wurde nicht gefunden."
@@ -13,7 +14,7 @@ commands:
     success-team: "Es wurden {count} Spieler aus Team \"{team}\" wiederbelebt!"
     players-only: "Nur Spieler können diesen Befehl ausführen."
     fetching-profile: "Profil für \"{name}\" wird abgerufen..."
-    pool-exhausted: "Der Namen-Pool ist leer - {player} wurde ohne Verkleidung wiederbelebt. Neue Namen werden im Hintergrund von Mojang geholt."
+    pool-exhausted: "Der Namen-Pool ist leer. {player} wurde ohne Verkleidung wiederbelebt. Neue Namen werden im Hintergrund von Mojang geholt."
     pool-exhausted-multiple: "{count} Spieler wurden ohne Verkleidung wiederbelebt, weil der Namen-Pool leer ist."
   undisguise:
     usage: "Benutzung: /fr undisguise [@a|Spieler|FakeName]"
@@ -23,14 +24,14 @@ commands:
     success-other: "Du hast {player} die Verkleidung entfernt."
     success-all: "Alle Verkleidungen wurden entfernt ({count} Spieler)."
   disguise:
-    usage: "Benutzung: /fr disguise <Spieler|@a|@p|@r> [MinecraftName]"
+    usage: "Benutzung: /fr disguise <Spieler|@a|@p|@near|@r> [MinecraftName]"
     not-found: "Dieser Spieler wurde nicht gefunden."
     pool-exhausted: "Der Fake-Namen-Pool ist erschöpft."
     success: "{player} wurde als \"{name}\" verkleidet."
     name-not-found: "Kein Minecraft-Account mit dem Namen \"{name}\" gefunden."
     success-multiple: "{count} Spieler wurden verkleidet."
     success-all: "{count} Spieler verkleidet, {exempt} ausgenommen, {already} bereits verkleidet."
-    pool-exhausted-all: "Der Namen-Pool ist leer - {count} Spieler wurden nicht verkleidet. Neue Namen werden im Hintergrund von Mojang geholt."
+    pool-exhausted-all: "Der Namen-Pool ist leer. {count} Spieler wurden nicht verkleidet. Neue Namen werden im Hintergrund von Mojang geholt."
   exempt:
     usage: "Benutzung: /fr exempt <add|remove|list> [Spieler]"
     added: "{player} ist jetzt von /fr disguise @a ausgenommen."
@@ -41,10 +42,12 @@ commands:
     player-not-found: "Spieler \"{player}\" wurde nicht gefunden."
     list-empty: "Es sind keine Spieler ausgenommen."
     list-format: "Ausgenommene Spieler: {players}"
+    config-suffix: " (config.yml)"
   kit:
     usage: "Benutzung: /fr kit <save|list|give|equip|delete>"
     players-only: "Nur Spieler können Kits speichern."
     saved: "Kit \"{name}\" wurde gespeichert."
+    invalid-name: "Ungültiger Kitname \"{name}\". Erlaubt sind 1 bis 32 Buchstaben, Ziffern, Unterstriche oder Bindestriche."
     list-empty: "Keine Kits vorhanden."
     list-format: "Verfügbare Kits: {kits}"
     delete-usage: "Benutzung: /fr kit delete <Name>"
@@ -83,6 +86,7 @@ commands:
   team:
     players-only: "Nur Spieler können diesen Befehl ausführen."
     already-exists: "Team \"{team}\" existiert bereits."
+    invalid-name: "Ungültiger Teamname \"{team}\". Erlaubt sind 1 bis 32 Buchstaben, Ziffern, Unterstriche oder Bindestriche."
     created: "Team \"{team}\" wurde erstellt."
     deleted: "Team \"{team}\" wurde gelöscht."
     not-found: "Team \"{team}\" wurde nicht gefunden."
@@ -106,13 +110,15 @@ commands:
     refilling: "Es werden gerade neue Namen von Mojang geholt..."
     idle: "Aktuell läuft kein Nachschub-Vorgang."
     refill-started: "Nachschub von Mojang wurde gestartet."
+    refill-running: "Es läuft bereits ein Nachschub-Vorgang."
+    refill-full: "Der Namen-Pool ist bereits voll (Ziel: {target})."
   reload:
     success: "Config und Kits wurden neu geladen."
   help:
     header: "Hilfe"
     revive: "/fr revive <Spieler/@a/Team> [Kit]: Spieler wiederbeleben"
     undisguise: "/fr undisguise [Spieler]: Verkleidung entfernen"
-    disguise: "/fr disguise <Spieler|@a|@p|@r> [MinecraftName]: Spieler manuell verkleiden"
+    disguise: "/fr disguise <Spieler|@a|@p|@near|@r> [MinecraftName]: Spieler manuell verkleiden (@p nächster Spieler, @near alle im Umkreis von 16 Blöcken)"
     exempt: "/fr exempt <add|remove|list> [Spieler]: Ausnahmen für /fr disguise @a verwalten"
     kit-save: "/fr kit save <Name>: Inventar als Kit speichern"
     kit-list: "/fr kit list: Alle Kits anzeigen"
@@ -162,7 +168,7 @@ gui:
     lore-create: "Klick und gib den Teamnamen ein"
     lore-back: "Zurück zur Teamübersicht"
     lore-add-player: "Gib einen oder mehrere Spielernamen ein"
-    lore-add-player-hint: "Beispiel: Spieler1 Spieler2 oder @a @p @r @split"
+    lore-add-player-hint: "Beispiel: Spieler1 Spieler2 oder @a @p @near @r @split (@p nächster Spieler, @near alle im Umkreis von 16 Blöcken)"
     lore-clear: "Inventar aller Online-Mitglieder leeren"
     lore-set-kit: "Klick um ein Kit auszuwählen"
     lore-delete: "Team und alle Mitglieder werden entfernt"

@@ -1,10 +1,8 @@
 package com.fakerevive.listener;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
@@ -16,39 +14,40 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerAdvancementDoneEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.permissions.Permissible;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
 import com.fakerevive.disguise.ActiveDisguiseRegistry;
+import com.fakerevive.disguise.DisguiseNameReplacer;
+import com.fakerevive.disguise.FakeIdentity;
 import com.fakerevive.disguise.PlayerDisguiseService;
 import com.fakerevive.message.MessageService;
+import com.fakerevive.storage.FakedOutPlayerStore;
 
+import io.papermc.paper.chat.ChatRenderer;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
-/**
- * Handles death, quit, and join events to implement the fake-leave mechanic. On death the
- * real death message is suppressed and replaced with a configurable "{name} left the game"
- * broadcast; the player is held in spectator at their death location until revived via
- * {@link com.fakerevive.command.FakeReviveCommand}.
- */
 public class FakeLeaveListener implements Listener {
-
     private final JavaPlugin plugin;
     private final ActiveDisguiseRegistry activeDisguiseRegistry;
     private final PlayerDisguiseService playerDisguiseService;
     private final Map<UUID, BukkitTask> pendingRespawnTasks = new HashMap<>();
-    private final Set<UUID> fakedOutPlayers = new HashSet<>();
+    private final FakedOutPlayerStore fakedOutPlayerStore;
     private final MessageService messageService;
 
     public FakeLeaveListener(JavaPlugin plugin, ActiveDisguiseRegistry activeDisguiseRegistry,
-                              PlayerDisguiseService playerDisguiseService, MessageService messageService) {
+                              PlayerDisguiseService playerDisguiseService, FakedOutPlayerStore fakedOutPlayerStore,
+                              MessageService messageService) {
         this.plugin = plugin;
         this.activeDisguiseRegistry = activeDisguiseRegistry;
         this.playerDisguiseService = playerDisguiseService;
+        this.fakedOutPlayerStore = fakedOutPlayerStore;
         this.messageService = messageService;
     }
 
@@ -64,21 +63,15 @@ public class FakeLeaveListener implements Listener {
         if (originalDeathMessage != null) {
             Component deathMessage = originalDeathMessage;
 
-            // Replace victim fake name
             if (activeFakeName.isPresent()) {
-                String fakeVictim = activeFakeName.get();
-                String realVictim = player.getName();
-                deathMessage = deathMessage.replaceText(b -> b.matchLiteral(realVictim).replacement(fakeVictim));
+                deathMessage = DisguiseNameReplacer.replace(deathMessage, player.getName(), activeFakeName.get());
             }
 
-            // Replace killer fake name
             Player killer = player.getKiller();
             if (killer != null) {
                 Optional<String> killerFake = activeDisguiseRegistry.getFakeName(killer.getUniqueId());
                 if (killerFake.isPresent()) {
-                    String realKiller = killer.getName();
-                    String fakeKiller = killerFake.get();
-                    deathMessage = deathMessage.replaceText(b -> b.matchLiteral(realKiller).replacement(fakeKiller));
+                    deathMessage = DisguiseNameReplacer.replace(deathMessage, killer.getName(), killerFake.get());
                 }
             }
 
@@ -103,7 +96,7 @@ public class FakeLeaveListener implements Listener {
             playerDisguiseService.remove(player);
         }
 
-        fakedOutPlayers.add(playerId);
+        fakedOutPlayerStore.add(playerId);
 
         BukkitTask respawnTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
             pendingRespawnTasks.remove(playerId);
@@ -120,27 +113,28 @@ public class FakeLeaveListener implements Listener {
         pendingRespawnTasks.put(playerId, respawnTask);
     }
 
-    // HIGHEST ensures we null the quit message last, after other plugins
-    // may have set it.
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerQuit(PlayerQuitEvent event) {
-        UUID playerId = event.getPlayer().getUniqueId();
+        Player player = event.getPlayer();
+        UUID playerId = player.getUniqueId();
 
-        if (fakedOutPlayers.contains(playerId)) {
+        if (fakedOutPlayerStore.contains(playerId)) {
             event.quitMessage(null);
+        } else {
+            Component quitMessage = event.quitMessage();
+            Optional<String> fakeName = activeDisguiseRegistry.getFakeName(playerId);
+            if (quitMessage != null && fakeName.isPresent()) {
+                event.quitMessage(DisguiseNameReplacer.replace(quitMessage, player.getName(), fakeName.get()));
+            }
         }
 
         BukkitTask pendingRespawnTask = pendingRespawnTasks.remove(playerId);
         if (pendingRespawnTask != null) {
             pendingRespawnTask.cancel();
-            fakedOutPlayers.remove(playerId);
+            fakedOutPlayerStore.remove(playerId);
         }
     }
 
-    /**
-     * Intercepts chat messages from disguised players and re-broadcasts them
-     * using the fake name. Operators see the real name as an aqua prefix.
-     */
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onChat(AsyncChatEvent event) {
         Player player = event.getPlayer();
@@ -149,42 +143,53 @@ public class FakeLeaveListener implements Listener {
             return;
         }
 
-        event.setCancelled(true);
-        String fakeNameStr = fakeName.get();
-        String realName = player.getName();
-        Component message = event.message();
+        Component fakeDisplayName = Component.text(fakeName.get());
+        Component realNamePrefix = Component.text("[" + player.getName() + "] ", NamedTextColor.AQUA);
+        ChatRenderer previousRenderer = event.renderer();
 
-        Component normalFormat = Component.text("<" + fakeNameStr + "> ").append(message);
-
-        Component opFormat = Component.text("[" + realName + "] ", NamedTextColor.AQUA)
-                .append(Component.text("<" + fakeNameStr + "> "))
-                .append(message);
-
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            for (Player recipient : Bukkit.getOnlinePlayers()) {
-                recipient.sendMessage(recipient.isOp() ? opFormat : normalFormat);
+        event.renderer((source, sourceDisplayName, message, viewer) -> {
+            Component rendered = previousRenderer.render(source, fakeDisplayName, message, viewer);
+            if (viewer instanceof Permissible permissible
+                    && permissible.hasPermission(PlayerDisguiseService.SEE_REAL_NAME_PERMISSION)) {
+                return Component.empty().append(realNamePrefix).append(rendered);
             }
-            Bukkit.getConsoleSender().sendMessage(opFormat);
+            return rendered;
         });
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        activeDisguiseRegistry.getIdentity(player.getUniqueId())
-                .ifPresent(identity -> playerDisguiseService.apply(player, identity));
+        if (fakedOutPlayerStore.contains(player.getUniqueId())) {
+            if (player.getGameMode() == GameMode.SPECTATOR) {
+                event.joinMessage(null);
+                return;
+            }
+            fakedOutPlayerStore.remove(player.getUniqueId());
+        }
+
+        Optional<FakeIdentity> identity = activeDisguiseRegistry.getIdentity(player.getUniqueId());
+        if (identity.isEmpty()) {
+            return;
+        }
+
+        playerDisguiseService.apply(player, identity.get());
+
+        Component joinMessage = event.joinMessage();
+        if (joinMessage != null) {
+            event.joinMessage(DisguiseNameReplacer.replace(joinMessage, player.getName(), identity.get().name()));
+        }
     }
 
-    /** @return {@code true} if the player is currently in fake-out state (dead, awaiting revive). */
-    public boolean isFakedOut(UUID playerId) {
-        return fakedOutPlayers.contains(playerId);
-    }
+    @EventHandler
+    public void onPlayerAdvancementDone(PlayerAdvancementDoneEvent event) {
+        Player player = event.getPlayer();
+        Component advancementMessage = event.message();
+        Optional<String> fakeName = activeDisguiseRegistry.getFakeName(player.getUniqueId());
+        if (advancementMessage == null || fakeName.isEmpty()) {
+            return;
+        }
 
-    /**
-     * Removes the player from fake-out state. Called by
-     * {@link com.fakerevive.command.FakeReviveCommand} on successful revive.
-     */
-    public void clearFakedOut(UUID playerId) {
-        fakedOutPlayers.remove(playerId);
+        event.message(DisguiseNameReplacer.replace(advancementMessage, player.getName(), fakeName.get()));
     }
 }

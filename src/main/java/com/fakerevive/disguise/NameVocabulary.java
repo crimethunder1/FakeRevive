@@ -1,13 +1,6 @@
 package com.fakerevive.disguise;
 
-/**
- * Shared word lists used to build Minecraft username candidates. Kept in one place so the
- * runtime {@link MojangIdentityFetcher} and the offline {@code NameListGenerator} dev tool draw
- * from the same vocabulary - the fetcher previously carried its own 30x30 lists, which was far
- * too small a space to keep finding unclaimed names.
- */
 public final class NameVocabulary {
-
     public static final String[] ADJECTIVES = {
             "Silent", "Shadow", "Crimson", "Frozen", "Golden", "Swift", "Dark", "Ancient", "Wild", "Blazing",
             "Rusty", "Mystic", "Savage", "Lucky", "Grim", "Bold", "Quiet", "Sneaky", "Feral", "Toxic",

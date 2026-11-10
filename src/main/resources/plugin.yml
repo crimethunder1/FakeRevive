@@ -1,7 +1,8 @@
 name: FakeRevive
 version: ${project.version}
 main: com.fakerevive.FakeRevivePlugin
-api-version: '1.21'
+authors: [crimethunder]
+api-version: '26.2'
 depend: [packetevents]
 description: On death, fakes a leave message and disguises players on revive.
 commands:
@@ -21,6 +22,7 @@ permissions:
       fakerevive.armor: true
       fakerevive.pool: true
       fakerevive.reload: true
+      fakerevive.seereal: true
   fakerevive.revive:
     description: Allows reviving players with /fr revive.
     default: op
@@ -41,6 +43,9 @@ permissions:
     default: op
   fakerevive.reload:
     description: Allows reloading the plugin with /fr reload.
+    default: op
+  fakerevive.seereal:
+    description: Shows the real name of disguised players in chat and in the tab list.
     default: op
   fakerevive.leave:
     description: Allows players to leave their team with /fr leave.

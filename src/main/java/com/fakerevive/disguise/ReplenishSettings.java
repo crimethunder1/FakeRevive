@@ -4,19 +4,12 @@ import org.bukkit.configuration.file.FileConfiguration;
 
 import java.time.Duration;
 
-/**
- * Tuning for the background name refill, read from the {@code fake-names} block of config.yml.
- * Every value is clamped on the way in: a mistyped config must not be able to point a burst of
- * requests at Mojang and get the server IP rate limited.
- */
 public record ReplenishSettings(boolean enabled, int targetSize, int lowWaterMark, int batchSize,
                                 long intervalTicks, Duration requestSpacing, int maxAttemptsPerIdentity,
                                 boolean reuseDonorSkins) {
-
     private static final int MIN_TARGET_SIZE = 1;
     private static final int MAX_TARGET_SIZE = 500;
     private static final int MIN_BATCH_SIZE = 1;
-    /** Bounds the worst-case runtime of a single batch, which matters at shutdown. */
     private static final int MAX_BATCH_SIZE = 50;
     private static final long MIN_INTERVAL_SECONDS = 30L;
     private static final long MIN_REQUEST_SPACING_MILLIS = 200L;

@@ -1,6 +1,7 @@
 package com.fakerevive.armor;
 
 import com.fakerevive.FakeRevivePlugin;
+import com.fakerevive.support.PluginLoader;
 import com.fakerevive.disguise.FakeIdentity;
 import com.fakerevive.disguise.MojangIdentityFetcher;
 import net.kyori.adventure.text.Component;
@@ -29,47 +30,36 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ArmorLockTest {
-
-    /** Raw slot of the helmet in a player's own inventory view. */
     private static final int HELMET_RAW_SLOT = 5;
-    /** Raw slot of the first storage row, used as a "not an armor slot" control. */
     private static final int STORAGE_RAW_SLOT = 9;
 
     private static final Component PREFIX = Component.text("[FakeRevive] ", NamedTextColor.AQUA);
 
     private ServerMock server;
     private FakeRevivePlugin plugin;
-    private PlayerMock op;
+    private PlayerMock operator;
 
     @BeforeEach
     void setUp() {
-        FakeRevivePlugin.setIdentityFetcherFactoryForTesting(() -> new MojangIdentityFetcher() {
-            @Override
-            public Optional<FakeIdentity> fetchNewIdentity(Set<String> excludedNames, int maxAttempts) {
-                return Optional.empty();
-            }
-        });
         server = MockBukkit.mock();
-        plugin = MockBukkit.load(FakeRevivePlugin.class);
-        op = server.addPlayer("Admin");
-        op.setOp(true);
+        plugin = PluginLoader.load();
+        operator = server.addPlayer("Admin");
+        operator.setOp(true);
     }
 
     @AfterEach
     void tearDown() {
         MockBukkit.unmock();
-        FakeRevivePlugin.setIdentityFetcherFactoryForTesting(MojangIdentityFetcher::new);
     }
 
     private PlayerMock lockedPlayerWearingHelmet(String name) {
         PlayerMock player = server.addPlayer(name);
         player.getInventory().setHelmet(new ItemStack(Material.DIAMOND_HELMET));
-        server.dispatchCommand(op, "fr armor on " + name);
-        op.nextComponentMessage();
+        server.dispatchCommand(operator, "fr armor on " + name);
+        operator.nextComponentMessage();
         return player;
     }
 
-    /** Fires a real {@link InventoryClickEvent} through the plugin manager and reports the verdict. */
     private boolean clickIsBlocked(PlayerMock player, ClickType type, int rawSlot) {
         InventoryClickEvent event = new InventoryClickEvent(
                 new PlayerInventoryViewStub(player),
@@ -102,10 +92,9 @@ class ArmorLockTest {
     @Test
     void allowsFillingAnEmptyArmorSlotWhileLocked() {
         PlayerMock player = server.addPlayer("Locked");
-        server.dispatchCommand(op, "fr armor on Locked");
-        op.nextComponentMessage();
+        server.dispatchCommand(operator, "fr armor on Locked");
+        operator.nextComponentMessage();
 
-        // Nothing worn yet - the lock prevents removal, not equipping.
         assertFalse(clickIsBlocked(player, ClickType.LEFT, HELMET_RAW_SLOT));
     }
 
@@ -127,8 +116,8 @@ class ArmorLockTest {
     @Test
     void stopsBlockingAfterArmorOff() {
         PlayerMock player = lockedPlayerWearingHelmet("Locked");
-        server.dispatchCommand(op, "fr armor off Locked");
-        op.nextComponentMessage();
+        server.dispatchCommand(operator, "fr armor off Locked");
+        operator.nextComponentMessage();
 
         assertFalse(clickIsBlocked(player, ClickType.LEFT, HELMET_RAW_SLOT));
     }
@@ -136,8 +125,8 @@ class ArmorLockTest {
     @Test
     void survivesAReloadFromDisk() {
         PlayerMock player = lockedPlayerWearingHelmet("Locked");
-        server.dispatchCommand(op, "fr reload");
-        op.nextComponentMessage();
+        server.dispatchCommand(operator, "fr reload");
+        operator.nextComponentMessage();
 
         assertTrue(clickIsBlocked(player, ClickType.LEFT, HELMET_RAW_SLOT));
     }
@@ -148,15 +137,15 @@ class ArmorLockTest {
         PlayerMock offline = server.addPlayer("Offline");
         online.getInventory().setHelmet(new ItemStack(Material.DIAMOND_HELMET));
         writeTeam("rot", null, List.of(online.getUniqueId().toString(), offline.getUniqueId().toString()));
-        server.dispatchCommand(op, "fr reload");
-        op.nextComponentMessage();
+        server.dispatchCommand(operator, "fr reload");
+        operator.nextComponentMessage();
 
-        server.dispatchCommand(op, "fr armor on rot");
+        server.dispatchCommand(operator, "fr armor on rot");
 
         assertEquals(
                 PREFIX.append(Component.text(
                         "Die Rüstung von 2 Spielern aus Team \"rot\" wurde gesperrt.", NamedTextColor.GREEN)),
-                op.nextComponentMessage());
+                operator.nextComponentMessage());
         assertTrue(clickIsBlocked(online, ClickType.LEFT, HELMET_RAW_SLOT));
 
         YamlConfiguration saved = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "armor-lock.yml"));
@@ -167,30 +156,30 @@ class ArmorLockTest {
     void reportsStatusForASingleTarget() {
         lockedPlayerWearingHelmet("Locked");
 
-        server.dispatchCommand(op, "fr armor status Locked");
+        server.dispatchCommand(operator, "fr armor status Locked");
 
         assertEquals(
                 PREFIX.append(Component.text("Die Rüstung von Locked ist gesperrt.", NamedTextColor.YELLOW)),
-                op.nextComponentMessage());
+                operator.nextComponentMessage());
     }
 
     @Test
     void reportsEmptyStatusWhenNobodyIsLocked() {
-        server.dispatchCommand(op, "fr armor status");
+        server.dispatchCommand(operator, "fr armor status");
 
         assertEquals(
                 PREFIX.append(Component.text("Kein Spieler hat aktuell eine Rüstungssperre.", NamedTextColor.YELLOW)),
-                op.nextComponentMessage());
+                operator.nextComponentMessage());
     }
 
     @Test
     void rejectsUnknownAction() {
-        server.dispatchCommand(op, "fr armor sometimes");
+        server.dispatchCommand(operator, "fr armor sometimes");
 
         assertEquals(
                 PREFIX.append(Component.text(
                         "Benutzung: /fr armor <on|off|status> [Spieler|Team|@a]", NamedTextColor.RED)),
-                op.nextComponentMessage());
+                operator.nextComponentMessage());
     }
 
     @Test
@@ -200,7 +189,6 @@ class ArmorLockTest {
         player.getInventory().setBoots(new ItemStack(Material.IRON_BOOTS));
         PlayerInventoryViewStub view = new PlayerInventoryViewStub(player);
 
-        // Guards the raw-slot layout the click tests above rely on.
         assertEquals(InventoryType.SlotType.ARMOR, view.getSlotType(HELMET_RAW_SLOT));
         assertEquals(Material.DIAMOND_HELMET, view.getItem(HELMET_RAW_SLOT).getType());
         assertEquals(Material.IRON_BOOTS, view.getItem(8).getType());
@@ -215,8 +203,8 @@ class ArmorLockTest {
         try {
             plugin.getDataFolder().mkdirs();
             config.save(teamsFile);
-        } catch (Exception e) {
-            throw new IllegalStateException(e);
+        } catch (Exception exception) {
+            throw new IllegalStateException(exception);
         }
     }
 }

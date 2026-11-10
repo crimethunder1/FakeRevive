@@ -2,6 +2,7 @@ commands:
   fr:
     usage: "Usage: /fr <revive|undisguise|disguise|exempt|kit|team|armor|pool|leave|reload|help>"
     no-permission: "You don't have permission to use this command."
+    unexpected-error: "An unexpected error occurred. Check the server console for details."
   revive:
     usage: "Usage: /fr revive <player/@a/<team>> [kit]"
     not-found: "Player not found."
@@ -13,7 +14,7 @@ commands:
     success-team: "Revived {count} players from team \"{team}\"."
     players-only: "Only players can use this command."
     fetching-profile: "Fetching profile for \"{name}\"..."
-    pool-exhausted: "The name pool is empty - {player} was revived without a disguise. Fresh names are being fetched from Mojang in the background."
+    pool-exhausted: "The name pool is empty. {player} was revived without a disguise. Fresh names are being fetched from Mojang in the background."
     pool-exhausted-multiple: "{count} players were revived without a disguise because the name pool is empty."
   undisguise:
     usage: "Usage: /fr undisguise [@a|player|fakename]"
@@ -23,14 +24,14 @@ commands:
     success-other: "You removed {player}'s disguise."
     success-all: "All disguises removed ({count} players)."
   disguise:
-    usage: "Usage: /fr disguise <player|@a|@p|@r> [MinecraftName]"
+    usage: "Usage: /fr disguise <player|@a|@p|@near|@r> [MinecraftName]"
     not-found: "Player not found."
     pool-exhausted: "The fake name pool is exhausted."
     success: "{player} has been disguised as \"{name}\"."
     name-not-found: "No Minecraft account found with name \"{name}\"."
     success-multiple: "{count} players have been disguised."
     success-all: "{count} players disguised, {exempt} exempt, {already} already disguised."
-    pool-exhausted-all: "The name pool ran empty - {count} players were not disguised. Fresh names are being fetched from Mojang in the background."
+    pool-exhausted-all: "The name pool ran empty. {count} players were not disguised. Fresh names are being fetched from Mojang in the background."
   exempt:
     usage: "Usage: /fr exempt <add|remove|list> [player]"
     added: "{player} is now exempt from /fr disguise @a."
@@ -41,10 +42,12 @@ commands:
     player-not-found: "Player \"{player}\" not found."
     list-empty: "No players are exempt."
     list-format: "Exempt players: {players}"
+    config-suffix: " (config.yml)"
   kit:
     usage: "Usage: /fr kit <save|list|give|equip|delete>"
     players-only: "Only players can save kits."
     saved: "Kit \"{name}\" saved."
+    invalid-name: "Invalid kit name \"{name}\". Use 1 to 32 letters, digits, underscores or hyphens."
     list-empty: "No kits available."
     list-format: "Available kits: {kits}"
     delete-usage: "Usage: /fr kit delete <name>"
@@ -83,6 +86,7 @@ commands:
   team:
     players-only: "Only players can use this command."
     already-exists: "Team \"{team}\" already exists."
+    invalid-name: "Invalid team name \"{team}\". Use 1 to 32 letters, digits, underscores or hyphens."
     created: "Team \"{team}\" has been created."
     deleted: "Team \"{team}\" has been deleted."
     not-found: "Team \"{team}\" not found."
@@ -106,13 +110,15 @@ commands:
     refilling: "Currently fetching fresh names from Mojang..."
     idle: "No refill is running right now."
     refill-started: "Refill from Mojang started."
+    refill-running: "A refill is already running."
+    refill-full: "The name pool is already full (target: {target})."
   reload:
     success: "Config and kits reloaded."
   help:
     header: "Help"
     revive: "/fr revive <player/@a/team> [kit]: Revive a player"
     undisguise: "/fr undisguise [player]: Remove a player's disguise"
-    disguise: "/fr disguise <player|@a|@p|@r> [MinecraftName]: Manually disguise a player"
+    disguise: "/fr disguise <player|@a|@p|@near|@r> [MinecraftName]: Manually disguise a player (@p nearest player, @near everyone within 16 blocks)"
     exempt: "/fr exempt <add|remove|list> [player]: Manage players skipped by /fr disguise @a"
     kit-save: "/fr kit save <name>: Save inventory as a kit"
     kit-list: "/fr kit list: List all kits"
@@ -162,7 +168,7 @@ gui:
     lore-create: "Click and type the team name"
     lore-back: "Back to team overview"
     lore-add-player: "Type one or more player names"
-    lore-add-player-hint: "Example: Player1 Player2 or @a @p @r @split"
+    lore-add-player-hint: "Example: Player1 Player2 or @a @p @near @r @split (@p nearest player, @near everyone within 16 blocks)"
     lore-clear: "Clear inventory of all online members"
     lore-set-kit: "Click to select a kit"
     lore-delete: "Removes the team and all its members"

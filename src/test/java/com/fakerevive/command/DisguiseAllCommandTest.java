@@ -1,6 +1,7 @@
 package com.fakerevive.command;
 
 import com.fakerevive.FakeRevivePlugin;
+import com.fakerevive.support.PluginLoader;
 import com.fakerevive.disguise.ActiveDisguiseRegistry;
 import com.fakerevive.disguise.FakeIdentity;
 import com.fakerevive.disguise.MojangIdentityFetcher;
@@ -26,9 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DisguiseAllCommandTest {
-
     private static final String PREFIX = "[FakeRevive] ";
-    private static final int BUNDLED_NAME_COUNT = 201;
     private static final String PER_PLAYER_POOL_EXHAUSTED = PREFIX + "Der Fake-Namen-Pool ist erschöpft.";
 
     private ServerMock server;
@@ -38,14 +37,8 @@ class DisguiseAllCommandTest {
 
     @BeforeEach
     void setUp() {
-        FakeRevivePlugin.setIdentityFetcherFactoryForTesting(() -> new MojangIdentityFetcher() {
-            @Override
-            public Optional<FakeIdentity> fetchNewIdentity(Set<String> excludedNames, int maxAttempts) {
-                return Optional.empty();
-            }
-        });
         server = MockBukkit.mock();
-        plugin = MockBukkit.load(FakeRevivePlugin.class);
+        plugin = PluginLoader.load();
         console = server.getConsoleSender();
         registry = plugin.getActiveDisguiseRegistry();
     }
@@ -53,7 +46,6 @@ class DisguiseAllCommandTest {
     @AfterEach
     void tearDown() {
         MockBukkit.unmock();
-        FakeRevivePlugin.setIdentityFetcherFactoryForTesting(MojangIdentityFetcher::new);
     }
 
     @Test
@@ -94,7 +86,7 @@ class DisguiseAllCommandTest {
     @Test
     void emptyPoolProducesExactlyOneSummaryMessage() {
         PlayerMock sink = server.addPlayer("Sink");
-        drainPool(BUNDLED_NAME_COUNT);
+        drainPool(plugin.getFakeNamePool().availableCount());
         PlayerMock first = server.addPlayer("First");
         PlayerMock second = server.addPlayer("Second");
         PlayerMock third = server.addPlayer("Third");
@@ -105,7 +97,7 @@ class DisguiseAllCommandTest {
         List<String> messages = drainMessages();
         assertEquals(List.of(
                 PREFIX + "0 Spieler verkleidet, 0 ausgenommen, 1 bereits verkleidet.",
-                PREFIX + "Der Namen-Pool ist leer - 3 Spieler wurden nicht verkleidet. "
+                PREFIX + "Der Namen-Pool ist leer. 3 Spieler wurden nicht verkleidet. "
                         + "Neue Namen werden im Hintergrund von Mojang geholt."),
                 messages);
         assertFalse(messages.contains(PER_PLAYER_POOL_EXHAUSTED));
@@ -118,7 +110,7 @@ class DisguiseAllCommandTest {
     @Test
     void poolRunningEmptyDuringTheRunSkipsTheRemainingPlayers() {
         server.addPlayer("Sink");
-        drainPool(BUNDLED_NAME_COUNT - 1);
+        drainPool(plugin.getFakeNamePool().availableCount() - 1);
         PlayerMock first = server.addPlayer("First");
         PlayerMock second = server.addPlayer("Second");
         PlayerMock third = server.addPlayer("Third");
@@ -134,7 +126,7 @@ class DisguiseAllCommandTest {
         List<String> messages = drainMessages();
         assertEquals(PREFIX + "1 Spieler verkleidet, 0 ausgenommen, 1 bereits verkleidet.",
                 messages.get(messages.size() - 2));
-        assertEquals(PREFIX + "Der Namen-Pool ist leer - 2 Spieler wurden nicht verkleidet. "
+        assertEquals(PREFIX + "Der Namen-Pool ist leer. 2 Spieler wurden nicht verkleidet. "
                         + "Neue Namen werden im Hintergrund von Mojang geholt.",
                 messages.get(messages.size() - 1));
         assertFalse(messages.contains(PER_PLAYER_POOL_EXHAUSTED));
@@ -146,7 +138,7 @@ class DisguiseAllCommandTest {
 
         server.dispatchCommand(console, "fr disguise @a Notch");
 
-        assertEquals(List.of(PREFIX + "Benutzung: /fr disguise <Spieler|@a|@p|@r> [MinecraftName]"),
+        assertEquals(List.of(PREFIX + "Benutzung: /fr disguise <Spieler|@a|@p|@near|@r> [MinecraftName]"),
                 drainMessages());
         assertFalse(registry.getIdentity(target.getUniqueId()).isPresent());
     }

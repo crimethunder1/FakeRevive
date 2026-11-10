@@ -21,15 +21,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Applies and removes player disguises without spawning extra entities. Uses PacketEvents
- * to intercept outgoing {@code PLAYER_INFO_UPDATE ADD_PLAYER} packets and rewrite name and
- * skin before they reach each client. A hide/show cycle on each observer forces the client
- * to despawn and respawn the player entity, picking up the freshly injected profile.
- * <p>Requires PacketEvents to be installed as a server plugin. If unavailable,
- * {@link #apply} and {@link #remove} are no-ops and a warning is logged on startup.
- */
 public class PlayerDisguiseService {
+    public static final String SEE_REAL_NAME_PERMISSION = "fakerevive.seereal";
 
     private final ActiveDisguiseRegistry activeDisguiseRegistry;
     private JavaPlugin plugin;
@@ -38,10 +31,6 @@ public class PlayerDisguiseService {
         this.activeDisguiseRegistry = activeDisguiseRegistry;
     }
 
-    /**
-     * Registers the packet interceptor with PacketEvents. Must be called once during plugin
-     * enable, before any {@link #apply} or {@link #remove} calls.
-     */
     public void registerPacketListener(JavaPlugin owningPlugin, MessageService messageService) {
         this.plugin = owningPlugin;
         if (!isPacketEventsAvailable()) {
@@ -51,11 +40,6 @@ public class PlayerDisguiseService {
         PacketEvents.getAPI().getEventManager().registerListeners(new PlayerInfoInterceptor(activeDisguiseRegistry));
     }
 
-    /**
-     * Pushes the fake profile to every currently online observer and triggers an entity
-     * re-render so they see the new name and skin immediately. Must be called after the
-     * identity has been stored in {@link ActiveDisguiseRegistry}.
-     */
     public void apply(Player player, FakeIdentity identity) {
         if (plugin == null || !isPacketEventsAvailable()) return;
         UserProfile fakeProfile = new UserProfile(player.getUniqueId(), identity.name(),
@@ -63,11 +47,6 @@ public class PlayerDisguiseService {
         refreshEntityForAllObservers(player, fakeProfile);
     }
 
-    /**
-     * Restores the real profile for every currently online observer. Must be called after
-     * the entry has been cleared from {@link ActiveDisguiseRegistry} so the interceptor
-     * no longer rewrites subsequent outgoing packets for this player.
-     */
     public void remove(Player player) {
         if (plugin == null || !isPacketEventsAvailable()) return;
         User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
@@ -76,11 +55,6 @@ public class PlayerDisguiseService {
         refreshEntityForAllObservers(player, realProfile);
     }
 
-    /**
-     * Re-sends the given profile to every observer. Operators additionally get an
-     * {@code UPDATE_DISPLAY_NAME} entry showing the real name in front of the fake one, so staff
-     * can still tell who is behind a disguise in the tab list.
-     */
     private void refreshEntityForAllObservers(Player player, UserProfile profile) {
         UUID playerId = player.getUniqueId();
         String realName = player.getName();
@@ -98,7 +72,7 @@ public class PlayerDisguiseService {
             EnumSet<WrapperPlayServerPlayerInfoUpdate.Action> actions =
                     EnumSet.of(WrapperPlayServerPlayerInfoUpdate.Action.ADD_PLAYER);
 
-            if (isDisguised && observer.isOp()) {
+            if (isDisguised && observer.hasPermission(SEE_REAL_NAME_PERMISSION)) {
                 entry.setDisplayName(Component.text("[" + realName + "] ", NamedTextColor.AQUA)
                         .append(Component.text(profile.getName(), NamedTextColor.WHITE)));
                 actions.add(WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_DISPLAY_NAME);
@@ -117,7 +91,6 @@ public class PlayerDisguiseService {
     }
 
     private static class PlayerInfoInterceptor extends PacketListenerAbstract {
-
         private final ActiveDisguiseRegistry registry;
 
         PlayerInfoInterceptor(ActiveDisguiseRegistry registry) {
@@ -149,7 +122,7 @@ public class PlayerDisguiseService {
                         List.of(new TextureProperty("textures", fakeIdentity.skinValue(), fakeIdentity.skinSignature())));
                 entry.setGameProfile(fakeProfile);
 
-                if (recipient.isOp()) {
+                if (recipient.hasPermission(SEE_REAL_NAME_PERMISSION)) {
                     Player realPlayer = Bukkit.getPlayer(entryId);
                     if (realPlayer != null) {
                         entry.setDisplayName(Component.text("[" + realPlayer.getName() + "] ", NamedTextColor.AQUA)

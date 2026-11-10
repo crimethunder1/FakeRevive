@@ -1,6 +1,7 @@
 package com.fakerevive.command;
 
 import com.fakerevive.FakeRevivePlugin;
+import com.fakerevive.support.PluginLoader;
 import com.fakerevive.disguise.FakeIdentity;
 import com.fakerevive.disguise.MojangIdentityFetcher;
 import net.kyori.adventure.text.Component;
@@ -20,32 +21,22 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReviveCommandTest {
-
     private static final Component PREFIX = Component.text("[FakeRevive] ", NamedTextColor.AQUA);
 
     private ServerMock server;
-    private PlayerMock op;
+    private PlayerMock operator;
 
     @BeforeEach
     void setUp() {
-        // MockBukkit executes runTaskAsynchronously immediately on a real thread, so without
-        // this stub every revive in these tests would hit the live Mojang API for replenishment.
-        FakeRevivePlugin.setIdentityFetcherFactoryForTesting(() -> new MojangIdentityFetcher() {
-            @Override
-            public Optional<FakeIdentity> fetchNewIdentity(Set<String> excludedNames, int maxAttempts) {
-                return Optional.empty();
-            }
-        });
         server = MockBukkit.mock();
-        MockBukkit.load(FakeRevivePlugin.class);
-        op = server.addPlayer("Admin");
-        op.setOp(true);
+        PluginLoader.load();
+        operator = server.addPlayer("Admin");
+        operator.setOp(true);
     }
 
     @AfterEach
     void tearDown() {
         MockBukkit.unmock();
-        FakeRevivePlugin.setIdentityFetcherFactoryForTesting(MojangIdentityFetcher::new);
     }
 
     @Test
@@ -62,52 +53,52 @@ class ReviveCommandTest {
 
     @Test
     void deniesUsageWithoutExactlyOneArgument() {
-        boolean handled = server.dispatchCommand(op, "fr revive");
+        boolean handled = server.dispatchCommand(operator, "fr revive");
 
         assertTrue(handled);
         assertEquals(
                 PREFIX.append(Component.text("Benutzung: /fr revive <Spieler/@a/<Team>> [Kit]", NamedTextColor.RED)),
-                op.nextComponentMessage());
+                operator.nextComponentMessage());
     }
 
     @Test
     void deniesReviveForUnknownPlayer() {
-        server.dispatchCommand(op, "fr revive Ghost");
+        server.dispatchCommand(operator, "fr revive Ghost");
 
         assertEquals(
                 PREFIX.append(Component.text("Dieser Spieler wurde nicht gefunden.", NamedTextColor.RED)),
-                op.nextComponentMessage());
+                operator.nextComponentMessage());
     }
 
     @Test
     void deniesReviveForPlayerNotFakedOut() {
         PlayerMock target = server.addPlayer("Target");
 
-        server.dispatchCommand(op, "fr revive Target");
+        server.dispatchCommand(operator, "fr revive Target");
 
         assertEquals(
                 PREFIX.append(Component.text("Dieser Spieler ist nicht im Spectator-Modus!", NamedTextColor.RED)),
-                op.nextComponentMessage());
+                operator.nextComponentMessage());
     }
 
     @Test
     void revivesFakedOutPlayerAndClearsFakedOutState() {
         PlayerMock target = server.addPlayer("Target");
         target.damage(target.getHealth() + 1);
-        drainMessages(op);
+        drainMessages(operator);
 
-        server.dispatchCommand(op, "fr revive Target");
+        server.dispatchCommand(operator, "fr revive Target");
 
         assertEquals(GameMode.SURVIVAL, target.getGameMode());
         assertEquals(
                 PREFIX.append(Component.text("Du hast Target erfolgreich wiederbelebt!", NamedTextColor.GREEN)),
-                op.nextComponentMessage());
+                operator.nextComponentMessage());
 
-        server.dispatchCommand(op, "fr revive Target");
+        server.dispatchCommand(operator, "fr revive Target");
 
         assertEquals(
                 PREFIX.append(Component.text("Dieser Spieler ist nicht im Spectator-Modus!", NamedTextColor.RED)),
-                op.nextComponentMessage());
+                operator.nextComponentMessage());
     }
 
     @Test
@@ -117,15 +108,15 @@ class ReviveCommandTest {
         PlayerMock bystander = server.addPlayer("Bystander");
         firstVictim.damage(firstVictim.getHealth() + 1);
         secondVictim.damage(secondVictim.getHealth() + 1);
-        drainMessages(op);
+        drainMessages(operator);
 
-        server.dispatchCommand(op, "fr revive @a");
+        server.dispatchCommand(operator, "fr revive @a");
 
         assertEquals(GameMode.SURVIVAL, firstVictim.getGameMode());
         assertEquals(GameMode.SURVIVAL, secondVictim.getGameMode());
         assertEquals(
                 PREFIX.append(Component.text("Es wurden erfolgreich 2 Spieler wiederbelebt!", NamedTextColor.GREEN)),
-                op.nextComponentMessage());
+                operator.nextComponentMessage());
         assertEquals(GameMode.SURVIVAL, bystander.getGameMode());
     }
 
@@ -133,13 +124,13 @@ class ReviveCommandTest {
     void respondsWhenNoFakedOutPlayersExistForWildcard() {
         server.addPlayer("Bystander");
 
-        server.dispatchCommand(op, "fr revive @a");
+        server.dispatchCommand(operator, "fr revive @a");
 
         assertEquals(
                 PREFIX.append(Component.text(
                         "Es gab keine Spieler im Spectator-Modus, die wiederbelebt werden konnten.",
                         NamedTextColor.YELLOW)),
-                op.nextComponentMessage());
+                operator.nextComponentMessage());
     }
 
     private void drainMessages(PlayerMock player) {

@@ -8,23 +8,21 @@ import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.DyeColor;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Builds and opens the FakeRevive team management GUIs.
- * Three screens: main menu (all teams), team detail (members + kit), kit picker.
- */
 public class TeamGui {
-
     private static final DyeColor[] TEAM_COLORS = {
             DyeColor.RED, DyeColor.BLUE, DyeColor.GREEN, DyeColor.YELLOW,
             DyeColor.PURPLE, DyeColor.ORANGE, DyeColor.CYAN, DyeColor.PINK,
@@ -34,55 +32,59 @@ public class TeamGui {
     private final TeamManager teamManager;
     private final KitManager kitManager;
     private final MessageService messageService;
+    private final NamespacedKey kitNameKey;
 
-    public TeamGui(TeamManager teamManager, KitManager kitManager, MessageService messageService) {
+    public TeamGui(JavaPlugin plugin, TeamManager teamManager, KitManager kitManager, MessageService messageService) {
         this.teamManager = teamManager;
         this.kitManager = kitManager;
         this.messageService = messageService;
+        this.kitNameKey = new NamespacedKey(plugin, "kit_name");
     }
 
-    /** Opens the main menu showing all teams as colored wool blocks plus a "create team" button. */
+    NamespacedKey kitNameKey() {
+        return kitNameKey;
+    }
+
     public void openMainMenu(Player player) {
-        Inventory inv = Bukkit.createInventory(
-                new TeamGuiHolder("main", null), 54,
+        Inventory inventory = Bukkit.createInventory(
+                new TeamGuiHolder(TeamGuiType.MAIN, null), TeamGuiSlots.INVENTORY_SIZE,
                 Component.text(messageService.get("gui.team.main-title"), NamedTextColor.AQUA));
 
-        fillBackground(inv);
+        fillBackground(inventory);
 
         List<String> teamNames = new ArrayList<>(teamManager.getTeamNames());
-        int[] innerSlots = innerSlots();
-        for (int i = 0; i < Math.min(teamNames.size(), innerSlots.length); i++) {
-            inv.setItem(innerSlots[i], buildTeamItem(teamNames.get(i)));
+        int[] innerSlots = TeamGuiSlots.innerSlots();
+        for (int index = 0; index < Math.min(teamNames.size(), innerSlots.length); index++) {
+            inventory.setItem(innerSlots[index], buildTeamItem(teamNames.get(index)));
         }
 
-        inv.setItem(49, makeGlass(Material.LIME_STAINED_GLASS_PANE,
+        inventory.setItem(TeamGuiSlots.MAIN_CREATE_TEAM, makeGlass(Material.LIME_STAINED_GLASS_PANE,
                 messageService.get("gui.team.create"),
                 List.of(
                         Component.text(messageService.get("gui.team.lore-create"),
                                 NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
                 )));
 
-        player.openInventory(inv);
+        player.openInventory(inventory);
     }
 
-    /** Opens the detail view for a team: its members as player heads, its kit, and management buttons. */
     public void openTeamMenu(Player player, String teamName) {
-        Inventory inv = Bukkit.createInventory(
-                new TeamGuiHolder("team", teamName), 54,
+        Inventory inventory = Bukkit.createInventory(
+                new TeamGuiHolder(TeamGuiType.TEAM, teamName), TeamGuiSlots.INVENTORY_SIZE,
                 Component.text(messageService.get("gui.team.detail-title", "team", teamName), NamedTextColor.AQUA));
 
-        fillBackground(inv);
+        fillBackground(inventory);
 
         List<UUID> members = new ArrayList<>(teamManager.getTeamMembers(teamName));
-        for (int i = 0; i < Math.min(members.size(), 28); i++) {
-            inv.setItem(i, buildMemberHead(members.get(i)));
+        for (int index = 0; index < Math.min(members.size(), TeamGuiSlots.MEMBER_CAPACITY); index++) {
+            inventory.setItem(TeamGuiSlots.MEMBER_FIRST + index, buildMemberHead(members.get(index)));
         }
 
-        inv.setItem(45, makeGlass(Material.ARROW,
+        inventory.setItem(TeamGuiSlots.TEAM_BACK, makeGlass(Material.ARROW,
                 messageService.get("gui.team.back"),
                 List.of(Component.text(messageService.get("gui.team.lore-back"),
                         NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))));
-        inv.setItem(46, makeGlass(Material.LIME_STAINED_GLASS_PANE,
+        inventory.setItem(TeamGuiSlots.TEAM_ADD_PLAYER, makeGlass(Material.LIME_STAINED_GLASS_PANE,
                 messageService.get("gui.team.add-player"),
                 List.of(
                         Component.text(messageService.get("gui.team.lore-add-player"),
@@ -90,57 +92,57 @@ public class TeamGui {
                         Component.text(messageService.get("gui.team.lore-add-player-hint"),
                                 NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
                 )));
-        inv.setItem(47, makeGlass(Material.ORANGE_STAINED_GLASS_PANE,
+        inventory.setItem(TeamGuiSlots.TEAM_CLEAR, makeGlass(Material.ORANGE_STAINED_GLASS_PANE,
                 messageService.get("gui.team.clear"),
                 List.of(Component.text(messageService.get("gui.team.lore-clear"),
                         NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))));
-        inv.setItem(48, buildKitDisplayItem(teamName));
-        inv.setItem(50, makeGlass(Material.CHEST,
+        inventory.setItem(TeamGuiSlots.TEAM_KIT_DISPLAY, buildKitDisplayItem(teamName));
+        inventory.setItem(TeamGuiSlots.TEAM_SET_KIT, makeGlass(Material.CHEST,
                 messageService.get("gui.team.set-kit"),
                 List.of(Component.text(messageService.get("gui.team.lore-set-kit"),
                         NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))));
-        inv.setItem(53, makeGlass(Material.RED_STAINED_GLASS_PANE,
+        inventory.setItem(TeamGuiSlots.TEAM_DELETE, makeGlass(Material.RED_STAINED_GLASS_PANE,
                 messageService.get("gui.team.delete"),
                 List.of(Component.text(messageService.get("gui.team.lore-delete"),
                         NamedTextColor.RED).decoration(TextDecoration.ITALIC, false))));
 
-        player.openInventory(inv);
+        player.openInventory(inventory);
     }
 
-    /** Opens the kit picker for a team, showing all saved kits as chest items. */
     public void openKitPicker(Player player, String teamName) {
-        Inventory inv = Bukkit.createInventory(
-                new TeamGuiHolder("kit", teamName), 54,
+        Inventory inventory = Bukkit.createInventory(
+                new TeamGuiHolder(TeamGuiType.KIT, teamName), TeamGuiSlots.INVENTORY_SIZE,
                 Component.text(messageService.get("gui.kit.title"), NamedTextColor.AQUA));
 
-        fillBackground(inv);
+        fillBackground(inventory);
 
-        List<String> kits = new ArrayList<>(kitManager.getKitNames());
-        int[] innerSlots = innerSlots();
-        for (int i = 0; i < Math.min(kits.size(), innerSlots.length); i++) {
+        List<String> kitNames = new ArrayList<>(kitManager.getKitNames());
+        int[] innerSlots = TeamGuiSlots.innerSlots();
+        for (int index = 0; index < Math.min(kitNames.size(), innerSlots.length); index++) {
             ItemStack kitItem = new ItemStack(Material.CHEST);
             ItemMeta meta = kitItem.getItemMeta();
-            meta.displayName(Component.text(kits.get(i), NamedTextColor.YELLOW)
+            meta.displayName(Component.text(kitNames.get(index), NamedTextColor.YELLOW)
                     .decoration(TextDecoration.ITALIC, false));
             meta.lore(List.of(Component.text(messageService.get("gui.kit.lore-select"),
                     NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+            meta.getPersistentDataContainer().set(kitNameKey, PersistentDataType.STRING, kitNames.get(index));
             kitItem.setItemMeta(meta);
-            inv.setItem(innerSlots[i], kitItem);
+            inventory.setItem(innerSlots[index], kitItem);
         }
 
-        inv.setItem(45, makeGlass(Material.ARROW, messageService.get("gui.team.back")));
-        inv.setItem(49, makeGlass(Material.RED_STAINED_GLASS_PANE,
+        inventory.setItem(TeamGuiSlots.KIT_BACK, makeGlass(Material.ARROW, messageService.get("gui.team.back")));
+        inventory.setItem(TeamGuiSlots.KIT_REMOVE, makeGlass(Material.RED_STAINED_GLASS_PANE,
                 messageService.get("gui.kit.remove"),
                 List.of(Component.text(messageService.get("gui.kit.lore-remove"),
                         NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))));
 
-        player.openInventory(inv);
+        player.openInventory(inventory);
     }
 
-    private void fillBackground(Inventory inv) {
+    private void fillBackground(Inventory inventory) {
         ItemStack background = makeGlass(Material.BLACK_STAINED_GLASS_PANE, " ");
-        for (int i = 0; i < inv.getSize(); i++) {
-            inv.setItem(i, background);
+        for (int slot = 0; slot < inventory.getSize(); slot++) {
+            inventory.setItem(slot, background);
         }
     }
 
@@ -165,14 +167,14 @@ public class TeamGui {
         return item;
     }
 
-    private ItemStack buildMemberHead(UUID uuid) {
+    private ItemStack buildMemberHead(UUID uniqueId) {
         ItemStack skull = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta meta = (SkullMeta) skull.getItemMeta();
-        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(uuid);
+        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(uniqueId);
         meta.setOwningPlayer(offlinePlayer);
 
-        String name = offlinePlayer.getName() != null ? offlinePlayer.getName() : uuid.toString();
-        boolean online = Bukkit.getPlayer(uuid) != null;
+        String name = offlinePlayer.getName() != null ? offlinePlayer.getName() : uniqueId.toString();
+        boolean online = Bukkit.getPlayer(uniqueId) != null;
         meta.displayName(Component.text(name, online ? NamedTextColor.GREEN : NamedTextColor.GRAY)
                 .decoration(TextDecoration.ITALIC, false));
         meta.lore(List.of(
@@ -214,17 +216,5 @@ public class TeamGui {
 
     private DyeColor teamColor(String name) {
         return TEAM_COLORS[Math.abs(name.hashCode()) % TEAM_COLORS.length];
-    }
-
-    /** @return the slots of the inner 4x7 area of a 6-row chest, skipping the border rows/columns. */
-    static int[] innerSlots() {
-        int[] slots = new int[28];
-        int idx = 0;
-        for (int row = 1; row <= 4; row++) {
-            for (int col = 1; col <= 7; col++) {
-                slots[idx++] = row * 9 + col;
-            }
-        }
-        return slots;
     }
 }

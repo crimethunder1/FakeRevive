@@ -1,6 +1,7 @@
 package com.fakerevive.exempt;
 
 import com.fakerevive.FakeRevivePlugin;
+import com.fakerevive.support.PluginLoader;
 import com.fakerevive.disguise.FakeIdentity;
 import com.fakerevive.disguise.MojangIdentityFetcher;
 import org.junit.jupiter.api.AfterEach;
@@ -21,21 +22,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ExemptManagerTest {
-
     private ServerMock server;
     private FakeRevivePlugin plugin;
     private ExemptManager exemptManager;
 
     @BeforeEach
     void setUp() {
-        FakeRevivePlugin.setIdentityFetcherFactoryForTesting(() -> new MojangIdentityFetcher() {
-            @Override
-            public Optional<FakeIdentity> fetchNewIdentity(Set<String> excludedNames, int maxAttempts) {
-                return Optional.empty();
-            }
-        });
         server = MockBukkit.mock();
-        plugin = MockBukkit.load(FakeRevivePlugin.class);
+        plugin = PluginLoader.load();
         exemptManager = new ExemptManager(plugin);
         exemptManager.load();
     }
@@ -43,7 +37,6 @@ class ExemptManagerTest {
     @AfterEach
     void tearDown() {
         MockBukkit.unmock();
-        FakeRevivePlugin.setIdentityFetcherFactoryForTesting(MojangIdentityFetcher::new);
     }
 
     @Test

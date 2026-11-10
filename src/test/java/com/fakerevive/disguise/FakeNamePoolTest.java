@@ -17,7 +17,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FakeNamePoolTest {
-
     private static final String NAMES_JSON = "["
             + "{\"name\": \"Alpha_Wolf\", \"skinValue\": \"v1\", \"skinSignature\": \"s1\"}, "
             + "{\"name\": \"Beta_Falcon\", \"skinValue\": \"v2\", \"skinSignature\": \"s2\"}, "
@@ -29,7 +28,7 @@ class FakeNamePoolTest {
         FakeNamePool pool = new FakeNamePool(namesStream(), tempDir.resolve("used.yml"), new Random(1));
 
         Set<String> assigned = new HashSet<>();
-        for (int i = 0; i < 3; i++) {
+        for (int index = 0; index < 3; index++) {
             Optional<FakeIdentity> identity = pool.assignRandomIdentity();
             assertTrue(identity.isPresent());
             assertTrue(assigned.add(identity.get().name()), "Name was assigned twice: " + identity.get().name());
@@ -40,7 +39,7 @@ class FakeNamePoolTest {
     void returnsEmptyWhenPoolIsExhausted(@TempDir Path tempDir) {
         FakeNamePool pool = new FakeNamePool(namesStream(), tempDir.resolve("used.yml"), new Random(1));
 
-        for (int i = 0; i < 3; i++) {
+        for (int index = 0; index < 3; index++) {
             pool.assignRandomIdentity();
         }
 
@@ -58,7 +57,7 @@ class FakeNamePoolTest {
         FakeNamePool pool = new FakeNamePool(stream, tempDir.resolve("used.yml"), new Random(1));
 
         Set<String> assigned = new HashSet<>();
-        for (int i = 0; i < 3; i++) {
+        for (int index = 0; index < 3; index++) {
             assigned.add(pool.assignRandomIdentity().orElseThrow().name());
         }
 

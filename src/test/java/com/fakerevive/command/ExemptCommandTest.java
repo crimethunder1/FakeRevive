@@ -1,6 +1,7 @@
 package com.fakerevive.command;
 
 import com.fakerevive.FakeRevivePlugin;
+import com.fakerevive.support.PluginLoader;
 import com.fakerevive.disguise.FakeIdentity;
 import com.fakerevive.disguise.MojangIdentityFetcher;
 import net.kyori.adventure.text.Component;
@@ -23,7 +24,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ExemptCommandTest {
-
     private static final Component PREFIX = Component.text("[FakeRevive] ", NamedTextColor.AQUA);
 
     private ServerMock server;
@@ -32,14 +32,8 @@ class ExemptCommandTest {
 
     @BeforeEach
     void setUp() {
-        FakeRevivePlugin.setIdentityFetcherFactoryForTesting(() -> new MojangIdentityFetcher() {
-            @Override
-            public Optional<FakeIdentity> fetchNewIdentity(Set<String> excludedNames, int maxAttempts) {
-                return Optional.empty();
-            }
-        });
         server = MockBukkit.mock();
-        plugin = MockBukkit.load(FakeRevivePlugin.class);
+        plugin = PluginLoader.load();
         helper = server.addPlayer("Helper");
         helper.addAttachment(plugin, "fakerevive.disguise", true);
     }
@@ -47,7 +41,6 @@ class ExemptCommandTest {
     @AfterEach
     void tearDown() {
         MockBukkit.unmock();
-        FakeRevivePlugin.setIdentityFetcherFactoryForTesting(MojangIdentityFetcher::new);
     }
 
     @Test

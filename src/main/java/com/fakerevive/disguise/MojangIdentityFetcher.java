@@ -1,5 +1,11 @@
 package com.fakerevive.disguise;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -17,24 +23,16 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Fetches fresh {@link FakeIdentity} objects on demand by generating random candidate names,
- * verifying them against the real Mojang API, and pairing each with a skin borrowed from a
- * different, already-taken account. Used to top up the fake-name pool live during gameplay, as
- * opposed to {@code NameListGenerator}'s bulk offline generation. Runs blocking HTTP calls -
- * callers must invoke this off the main server thread.
- */
 public class MojangIdentityFetcher {
-
     private static final int MIN_NAME_LENGTH = 3;
     private static final int MAX_NAME_LENGTH = 16;
     private static final int MIN_APPENDED_DIGITS = 2;
     private static final int MAX_APPENDED_DIGITS = 5;
     private static final int MAX_NAME_BUILD_REDRAWS = 10;
     private static final Pattern VALID_NAME = Pattern.compile("[A-Za-z0-9_]{3,16}");
+    private static final Pattern VALID_UUID = Pattern.compile("[0-9a-fA-F]{32}");
 
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
     private static final Duration INITIAL_BACKOFF = Duration.ofSeconds(2);
@@ -42,10 +40,8 @@ public class MojangIdentityFetcher {
     private static final String NAME_LOOKUP_URI_PREFIX = "https://api.mojang.com/users/profiles/minecraft/";
     private static final String SESSION_SERVER_URI_PREFIX = "https://sessionserver.mojang.com/session/minecraft/profile/";
 
-    /** Cap on the "already asked Mojang about this one" memo, so a long uptime cannot leak memory. */
     private static final int MAX_REMEMBERED_PROBES = 5_000;
     private static final int MAX_CACHED_DONOR_SKINS = 32;
-    /** Only start recycling cached donor skins once the cache is varied enough to look natural. */
     private static final int MIN_DONOR_CACHE_BEFORE_REUSE = 8;
 
     private final HttpClient httpClient = HttpClient.newHttpClient();
@@ -55,33 +51,19 @@ public class MojangIdentityFetcher {
 
     private volatile boolean reuseDonorSkins = true;
 
-    private record ProfileLookup(boolean free, String uuid) {
+    private record ProfileLookup(boolean free, String uniqueId, String canonicalName) {
     }
 
-    /**
-     * Reusing donor skins cuts the API calls per identity from roughly four-to-eight down to
-     * two, which is the single biggest lever against Mojang rate limiting. Nothing in the plugin
-     * requires a disguise skin to be unique.
-     */
     public void setReuseDonorSkins(boolean reuseDonorSkins) {
         this.reuseDonorSkins = reuseDonorSkins;
     }
 
-    /**
-     * Fetches up to {@code count} identities in one pass. Every accepted name is added to a
-     * thread-confined copy of {@code excludedNames}, so a single batch can never hand back the
-     * same name twice. Stops early once an identity cannot be found (Mojang unreachable or
-     * rate-limiting) or once {@code abort} reports true, rather than burning the whole budget.
-     * Blocking - async thread only.
-     *
-     * @param spacing pause between identities, to stay well under the Mojang rate limit.
-     */
     public List<FakeIdentity> fetchNewIdentities(Set<String> excludedNames, int count, int maxAttemptsEach,
                                                  Duration spacing, BooleanSupplier abort) {
         Set<String> exclusions = new HashSet<>(excludedNames);
         List<FakeIdentity> fetched = new ArrayList<>(Math.max(count, 0));
 
-        for (int i = 0; i < count; i++) {
+        for (int index = 0; index < count; index++) {
             if (abort.getAsBoolean() || Thread.currentThread().isInterrupted()) {
                 break;
             }
@@ -94,18 +76,13 @@ public class MojangIdentityFetcher {
             exclusions.add(identity.get().name());
             fetched.add(identity.get());
 
-            if (i + 1 < count) {
+            if (index + 1 < count) {
                 sleepQuietly(spacing);
             }
         }
         return fetched;
     }
 
-    /**
-     * @return a verified-free name paired with a skin borrowed from an unrelated taken account, or
-     *         empty if no such pair could be found within {@code maxAttempts} (e.g. Mojang is
-     *         unreachable or rate-limiting).
-     */
     public Optional<FakeIdentity> fetchNewIdentity(Set<String> excludedNames, int maxAttempts) {
         for (int attempt = 0; attempt < maxAttempts; attempt++) {
             String candidateName = randomFreeCandidateName();
@@ -126,24 +103,24 @@ public class MojangIdentityFetcher {
         return Optional.empty();
     }
 
-    /**
-     * Fetches the current name and skin for an existing Minecraft account by username, so a
-     * player can be given a specific real identity instead of a randomly generated one.
-     * @return the account identity, or empty if no account exists under that name or its skin
-     *         could not be retrieved.
-     */
     public Optional<FakeIdentity> fetchIdentityByName(String name) {
-        Optional<HttpResponse<String>> profileResponse = getWithRetry(NAME_LOOKUP_URI_PREFIX + name);
-        if (profileResponse.isEmpty() || profileResponse.get().statusCode() != 200) {
+        if (name == null || !VALID_NAME.matcher(name).matches()) {
             return Optional.empty();
         }
-
-        Optional<String> uuid = extractJsonField(profileResponse.get().body(), "id");
-        if (uuid.isEmpty()) {
+        try {
+            Optional<ProfileLookup> lookup = lookupProfile(name);
+            if (lookup.isEmpty() || lookup.get().free()) {
+                return Optional.empty();
+            }
+            ProfileLookup profile = lookup.get();
+            if (profile.canonicalName() == null) {
+                return Optional.empty();
+            }
+            return fetchSkinTexture(profile.uniqueId())
+                    .map(texture -> new FakeIdentity(profile.canonicalName(), texture[0], texture[1]));
+        } catch (IllegalArgumentException | JsonParseException | IllegalStateException | UnsupportedOperationException exception) {
             return Optional.empty();
         }
-
-        return fetchSkinTexture(uuid.get()).map(texture -> new FakeIdentity(name, texture[0], texture[1]));
     }
 
     private Optional<FakeIdentity> findSkinDonor(String candidateName, int maxAttempts) {
@@ -159,7 +136,7 @@ public class MojangIdentityFetcher {
                 continue;
             }
 
-            Optional<String[]> texture = fetchSkinTexture(donorLookup.get().uuid());
+            Optional<String[]> texture = fetchSkinTexture(donorLookup.get().uniqueId());
             if (texture.isPresent()) {
                 cacheDonorSkin(texture.get());
                 return Optional.of(new FakeIdentity(candidateName, texture.get()[0], texture.get()[1]));
@@ -189,10 +166,6 @@ public class MojangIdentityFetcher {
         }
     }
 
-    /**
-     * Remembers a candidate so the same name is never sent to Mojang twice in one server session.
-     * @return {@code true} if this is the first time we have seen the name.
-     */
     private boolean rememberProbe(String candidateName) {
         synchronized (recentlyProbed) {
             if (!recentlyProbed.add(candidateName)) {
@@ -207,11 +180,6 @@ public class MojangIdentityFetcher {
         }
     }
 
-    /**
-     * Builds a candidate biased towards names that are still <em>unclaimed</em> on Mojang: every
-     * shape carries a digit tail. Plain adjective+noun pairs are essentially all taken, so
-     * spending lookups on them is wasted budget.
-     */
     String randomFreeCandidateName() {
         for (int redraw = 0; redraw < MAX_NAME_BUILD_REDRAWS; redraw++) {
             String base = switch (random.nextInt(5)) {
@@ -222,8 +190,6 @@ public class MojangIdentityFetcher {
                 default -> pick(NameVocabulary.ADJECTIVES) + pick(NameVocabulary.NOUNS) + pick(NameVocabulary.SUFFIXES);
             };
 
-            // Never truncate: cutting a long base down to 16 chars collapses distinct draws onto
-            // the same string, which is exactly how the pool used to end up repeating itself.
             int budget = MAX_NAME_LENGTH - base.length();
             if (budget < MIN_APPENDED_DIGITS) {
                 continue;
@@ -232,21 +198,15 @@ public class MojangIdentityFetcher {
             int maxDigits = Math.min(budget, MAX_APPENDED_DIGITS);
             int digits = MIN_APPENDED_DIGITS + random.nextInt(maxDigits - MIN_APPENDED_DIGITS + 1);
             StringBuilder name = new StringBuilder(base);
-            for (int i = 0; i < digits; i++) {
+            for (int index = 0; index < digits; index++) {
                 name.append(random.nextInt(10));
             }
             return name.toString();
         }
 
-        // Every shape overflowed the 16-char budget - fall back to the shortest form we have.
         return pick(NameVocabulary.SINGLE_WORDS) + (10 + random.nextInt(90));
     }
 
-    /**
-     * Builds a candidate biased towards names that are <em>already claimed</em>, which is what a
-     * skin donor lookup wants. Short, popular, digit-free forms are almost always taken, so this
-     * finds a donor in far fewer requests than reusing the free-name generator did.
-     */
     String randomTakenCandidateName() {
         for (int redraw = 0; redraw < MAX_NAME_BUILD_REDRAWS; redraw++) {
             String candidate = switch (random.nextInt(6)) {
@@ -270,8 +230,6 @@ public class MojangIdentityFetcher {
     }
 
     private Optional<ProfileLookup> lookupProfile(String name) {
-        // Mojang answers 404 for malformed names too, which would read as "free" even though no
-        // client would ever render the name. Reject those before spending a request on them.
         if (!VALID_NAME.matcher(name).matches()) {
             return Optional.empty();
         }
@@ -281,39 +239,74 @@ public class MojangIdentityFetcher {
         }
         HttpResponse<String> httpResponse = response.get();
         if (httpResponse.statusCode() == 404) {
-            return Optional.of(new ProfileLookup(true, null));
+            return Optional.of(new ProfileLookup(true, null, null));
         }
-        if (httpResponse.statusCode() == 200) {
-            Optional<String> uuid = extractJsonField(httpResponse.body(), "id");
-            return uuid.map(id -> new ProfileLookup(false, id));
+        if (httpResponse.statusCode() != 200) {
+            return Optional.empty();
+        }
+        Optional<JsonObject> body = parseJsonObject(httpResponse.body());
+        if (body.isEmpty()) {
+            return Optional.empty();
+        }
+        Optional<String> uniqueId = readString(body.get(), "id").filter(id -> VALID_UUID.matcher(id).matches());
+        Optional<String> canonicalName = readString(body.get(), "name").filter(canonical -> VALID_NAME.matcher(canonical).matches());
+        if (uniqueId.isEmpty() || canonicalName.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(new ProfileLookup(false, uniqueId.get(), canonicalName.get()));
+    }
+
+    private Optional<String[]> fetchSkinTexture(String uniqueId) {
+        if (uniqueId == null || !VALID_UUID.matcher(uniqueId).matches()) {
+            return Optional.empty();
+        }
+        Optional<HttpResponse<String>> response = getWithRetry(SESSION_SERVER_URI_PREFIX + uniqueId + "?unsigned=false");
+        if (response.isEmpty() || response.get().statusCode() != 200) {
+            return Optional.empty();
+        }
+        Optional<JsonObject> body = parseJsonObject(response.get().body());
+        if (body.isEmpty() || !body.get().has("properties") || !body.get().get("properties").isJsonArray()) {
+            return Optional.empty();
+        }
+        JsonArray properties = body.get().getAsJsonArray("properties");
+        for (JsonElement propertyElement : properties) {
+            if (!propertyElement.isJsonObject()) {
+                continue;
+            }
+            JsonObject property = propertyElement.getAsJsonObject();
+            if (!"textures".equals(readString(property, "name").orElse(null))) {
+                continue;
+            }
+            Optional<String> value = readString(property, "value");
+            Optional<String> signature = readString(property, "signature");
+            if (value.isPresent() && signature.isPresent()) {
+                return Optional.of(new String[] {value.get(), signature.get()});
+            }
         }
         return Optional.empty();
     }
 
-    /**
-     * @return {value, signature} of the donor's current skin texture, or empty if it couldn't be
-     *         fetched.
-     */
-    private Optional<String[]> fetchSkinTexture(String uuid) {
-        Optional<HttpResponse<String>> response = getWithRetry(SESSION_SERVER_URI_PREFIX + uuid + "?unsigned=false");
-        if (response.isEmpty() || response.get().statusCode() != 200) {
+    private static Optional<JsonObject> parseJsonObject(String body) {
+        if (body == null || body.isBlank()) {
             return Optional.empty();
         }
-        String body = response.get().body();
-        Optional<String> value = extractJsonField(body, "value");
-        Optional<String> signature = extractJsonField(body, "signature");
-        if (value.isEmpty() || signature.isEmpty()) {
+        try {
+            JsonElement parsed = JsonParser.parseString(body);
+            return parsed.isJsonObject() ? Optional.of(parsed.getAsJsonObject()) : Optional.empty();
+        } catch (JsonParseException exception) {
             return Optional.empty();
         }
-        return Optional.of(new String[] {value.get(), signature.get()});
     }
 
-    /**
-     * Issues the request, backing off exponentially on HTTP 429 and on transport errors. A flat
-     * two-attempt retry was not enough once Mojang starts rate limiting - it burned the budget and
-     * returned empty, which upstream reads as "no names available".
-     */
-    private Optional<HttpResponse<String>> getWithRetry(String uri) {
+    private static Optional<String> readString(JsonObject object, String field) {
+        JsonElement element = object.get(field);
+        if (element == null || !element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) {
+            return Optional.empty();
+        }
+        return Optional.of(element.getAsString());
+    }
+
+    Optional<HttpResponse<String>> getWithRetry(String uri) {
         Duration backoff = INITIAL_BACKOFF;
 
         for (int attempt = 0; attempt <= MAX_RETRIES_ON_RATE_LIMIT; attempt++) {
@@ -327,11 +320,10 @@ public class MojangIdentityFetcher {
                 if (response.statusCode() != 429) {
                     return Optional.of(response);
                 }
-            } catch (InterruptedException e) {
+            } catch (InterruptedException exception) {
                 Thread.currentThread().interrupt();
                 return Optional.empty();
-            } catch (IOException e) {
-                // falls through to the backoff sleep and the next attempt
+            } catch (IOException exception) {
             }
 
             if (attempt < MAX_RETRIES_ON_RATE_LIMIT) {
@@ -348,13 +340,8 @@ public class MojangIdentityFetcher {
         }
         try {
             Thread.sleep(duration.toMillis());
-        } catch (InterruptedException e) {
+        } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
         }
-    }
-
-    private Optional<String> extractJsonField(String json, String field) {
-        Matcher matcher = Pattern.compile("\"" + field + "\"\\s*:\\s*\"([^\"]*)\"").matcher(json);
-        return matcher.find() ? Optional.of(matcher.group(1)) : Optional.empty();
     }
 }

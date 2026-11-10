@@ -1,9 +1,10 @@
 package com.fakerevive.team;
 
+import com.fakerevive.command.NearbyPlayerResolver;
 import com.fakerevive.kit.KitManager;
 import com.fakerevive.message.MessageService;
+import com.fakerevive.storage.EntryNameValidator;
 import io.papermc.paper.event.player.AsyncChatEvent;
-import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
@@ -12,43 +13,39 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
-/**
- * Handles all click events inside FakeRevive team GUIs and manages one-shot chat
- * prompts (for team creation and player addition).
- */
 public class TeamGuiListener implements Listener {
-
     private final JavaPlugin plugin;
     private final TeamManager teamManager;
     private final TeamGui teamGui;
     private final KitManager kitManager;
     private final MessageService messageService;
-    private final Component prefix;
 
-    // Players currently waiting to type a response in chat, keyed by UUID.
     private final Map<UUID, Consumer<String>> pendingPrompts = new ConcurrentHashMap<>();
     private final Random random = new Random();
 
     public TeamGuiListener(JavaPlugin plugin, TeamManager teamManager, TeamGui teamGui,
-                           KitManager kitManager, MessageService messageService, Component prefix) {
+                           KitManager kitManager, MessageService messageService) {
         this.plugin = plugin;
         this.teamManager = teamManager;
         this.teamGui = teamGui;
         this.kitManager = kitManager;
         this.messageService = messageService;
-        this.prefix = prefix;
     }
 
     @EventHandler
@@ -67,10 +64,26 @@ public class TeamGuiListener implements Listener {
         }
 
         switch (holder.type()) {
-            case "main" -> handleMainMenuClick(player, event.getSlot());
-            case "team" -> handleTeamMenuClick(player, holder.teamName(), event.getSlot());
-            case "kit" -> handleKitPickerClick(player, holder.teamName(), event.getSlot(), clicked);
+            case MAIN -> handleMainMenuClick(player, event.getSlot());
+            case TEAM -> handleTeamMenuClick(player, holder.teamName(), event.getSlot());
+            case KIT -> handleKitPickerClick(player, holder.teamName(), event.getSlot(), clicked);
         }
+    }
+
+    @EventHandler
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (event.getInventory().getHolder() instanceof TeamGuiHolder) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        pendingPrompts.remove(event.getPlayer().getUniqueId());
+    }
+
+    boolean hasPendingPrompt(UUID playerId) {
+        return pendingPrompts.containsKey(playerId);
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -87,29 +100,34 @@ public class TeamGuiListener implements Listener {
     }
 
     private void handleMainMenuClick(Player player, int slot) {
-        if (slot == 49) {
+        if (slot == TeamGuiSlots.MAIN_CREATE_TEAM) {
             player.closeInventory();
-            promptChat(player, messageService.get("gui.team.type-team-name"), input -> {
+            promptChat(player, "gui.team.type-team-name", rawInput -> {
+                String input = rawInput.trim();
                 if (input.equalsIgnoreCase("cancel")) {
-                    sendMessage(player, "commands.team.cancelled", NamedTextColor.YELLOW);
+                    messageService.send(player, "commands.team.cancelled", NamedTextColor.YELLOW);
+                    return;
+                }
+                if (!EntryNameValidator.isValid(input)) {
+                    messageService.send(player, "commands.team.invalid-name", NamedTextColor.RED, "team", input);
                     return;
                 }
                 if (teamManager.teamExists(input)) {
-                    sendMessage(player, "commands.team.already-exists", NamedTextColor.RED, "team", input);
+                    messageService.send(player, "commands.team.already-exists", NamedTextColor.RED, "team", input);
                     return;
                 }
                 teamManager.createTeam(input);
-                sendMessage(player, "commands.team.created", NamedTextColor.GREEN, "team", input);
+                messageService.send(player, "commands.team.created", NamedTextColor.GREEN, "team", input);
                 Bukkit.getScheduler().runTask(plugin, () -> teamGui.openMainMenu(player));
             });
             return;
         }
 
         List<String> teamNames = new ArrayList<>(teamManager.getTeamNames());
-        int[] innerSlots = TeamGui.innerSlots();
-        for (int i = 0; i < Math.min(teamNames.size(), innerSlots.length); i++) {
-            if (innerSlots[i] == slot) {
-                teamGui.openTeamMenu(player, teamNames.get(i));
+        int[] innerSlots = TeamGuiSlots.innerSlots();
+        for (int index = 0; index < Math.min(teamNames.size(), innerSlots.length); index++) {
+            if (innerSlots[index] == slot) {
+                teamGui.openTeamMenu(player, teamNames.get(index));
                 return;
             }
         }
@@ -117,14 +135,14 @@ public class TeamGuiListener implements Listener {
 
     private void handleTeamMenuClick(Player player, String teamName, int slot) {
         switch (slot) {
-            case 45 -> teamGui.openMainMenu(player);
-            case 46 -> {
+            case TeamGuiSlots.TEAM_BACK -> teamGui.openMainMenu(player);
+            case TeamGuiSlots.TEAM_ADD_PLAYER -> {
                 player.closeInventory();
-                promptChat(player, messageService.get("gui.team.type-player-name"), input -> {
+                promptChat(player, "gui.team.type-player-name", input -> {
                     String trimmed = input.trim();
 
                     if (trimmed.equalsIgnoreCase("cancel")) {
-                        sendMessage(player, "commands.team.cancelled", NamedTextColor.YELLOW);
+                        messageService.send(player, "commands.team.cancelled", NamedTextColor.YELLOW);
                         return;
                     }
 
@@ -134,21 +152,33 @@ public class TeamGuiListener implements Listener {
                             teamManager.addPlayer(online.getUniqueId(), teamName);
                             added++;
                         }
-                        sendMessage(player, "commands.team.players-added", NamedTextColor.GREEN,
+                        messageService.send(player, "commands.team.players-added", NamedTextColor.GREEN,
                                 "count", String.valueOf(added), "team", teamName);
                         Bukkit.getScheduler().runTask(plugin, () -> teamGui.openTeamMenu(player, teamName));
                         return;
                     }
 
-                    if (trimmed.equalsIgnoreCase("@p")) {
-                        int added = 0;
-                        for (Player nearby : player.getWorld().getPlayers()) {
-                            if (nearby.getLocation().distanceSquared(player.getLocation()) <= 16 * 16) {
-                                teamManager.addPlayer(nearby.getUniqueId(), teamName);
-                                added++;
-                            }
+                    if (NearbyPlayerResolver.isNearestSelector(trimmed)) {
+                        Optional<Player> nearest = NearbyPlayerResolver.resolveNearest(player, candidate -> true);
+                        if (nearest.isEmpty()) {
+                            messageService.send(player, "commands.team.player-not-found", NamedTextColor.RED,
+                                    "player", NearbyPlayerResolver.NEAREST_SELECTOR);
+                            return;
                         }
-                        sendMessage(player, "commands.team.players-added", NamedTextColor.GREEN,
+                        teamManager.addPlayer(nearest.get().getUniqueId(), teamName);
+                        messageService.send(player, "commands.team.player-added", NamedTextColor.GREEN,
+                                "player", nearest.get().getName(), "team", teamName);
+                        Bukkit.getScheduler().runTask(plugin, () -> teamGui.openTeamMenu(player, teamName));
+                        return;
+                    }
+
+                    if (NearbyPlayerResolver.isNearSelector(trimmed)) {
+                        int added = 0;
+                        for (Player nearby : NearbyPlayerResolver.resolveNear(player, candidate -> true)) {
+                            teamManager.addPlayer(nearby.getUniqueId(), teamName);
+                            added++;
+                        }
+                        messageService.send(player, "commands.team.players-added", NamedTextColor.GREEN,
                                 "count", String.valueOf(added), "team", teamName);
                         Bukkit.getScheduler().runTask(plugin, () -> teamGui.openTeamMenu(player, teamName));
                         return;
@@ -157,12 +187,13 @@ public class TeamGuiListener implements Listener {
                     if (trimmed.equalsIgnoreCase("@r")) {
                         List<Player> online = new ArrayList<>(Bukkit.getOnlinePlayers());
                         if (online.isEmpty()) {
-                            sendMessage(player, "commands.team.player-not-found", NamedTextColor.RED, "player", "@r");
+                            messageService.send(player, "commands.team.player-not-found", NamedTextColor.RED,
+                                    "player", "@r");
                             return;
                         }
                         Player randomPlayer = online.get(random.nextInt(online.size()));
                         teamManager.addPlayer(randomPlayer.getUniqueId(), teamName);
-                        sendMessage(player, "commands.team.player-added", NamedTextColor.GREEN,
+                        messageService.send(player, "commands.team.player-added", NamedTextColor.GREEN,
                                 "player", randomPlayer.getName(), "team", teamName);
                         Bukkit.getScheduler().runTask(plugin, () -> teamGui.openTeamMenu(player, teamName));
                         return;
@@ -172,10 +203,10 @@ public class TeamGuiListener implements Listener {
                         List<Player> online = new ArrayList<>(Bukkit.getOnlinePlayers());
                         Collections.shuffle(online);
                         int half = online.size() / 2;
-                        for (int i = 0; i < half; i++) {
-                            teamManager.addPlayer(online.get(i).getUniqueId(), teamName);
+                        for (int index = 0; index < half; index++) {
+                            teamManager.addPlayer(online.get(index).getUniqueId(), teamName);
                         }
-                        sendMessage(player, "commands.team.players-added", NamedTextColor.GREEN,
+                        messageService.send(player, "commands.team.players-added", NamedTextColor.GREEN,
                                 "count", String.valueOf(half), "team", teamName);
                         Bukkit.getScheduler().runTask(plugin, () -> teamGui.openTeamMenu(player, teamName));
                         return;
@@ -197,17 +228,17 @@ public class TeamGuiListener implements Listener {
                     }
 
                     if (added > 0) {
-                        sendMessage(player, "commands.team.players-added", NamedTextColor.GREEN,
+                        messageService.send(player, "commands.team.players-added", NamedTextColor.GREEN,
                                 "count", String.valueOf(added), "team", teamName);
                     }
                     if (!notFound.isEmpty()) {
-                        sendMessage(player, "commands.team.players-not-found", NamedTextColor.RED,
+                        messageService.send(player, "commands.team.players-not-found", NamedTextColor.RED,
                                 "players", String.join(", ", notFound));
                     }
                     Bukkit.getScheduler().runTask(plugin, () -> teamGui.openTeamMenu(player, teamName));
                 });
             }
-            case 47 -> {
+            case TeamGuiSlots.TEAM_CLEAR -> {
                 int cleared = 0;
                 for (UUID memberId : teamManager.getTeamMembers(teamName)) {
                     Player member = Bukkit.getPlayer(memberId);
@@ -218,14 +249,14 @@ public class TeamGuiListener implements Listener {
                     member.updateInventory();
                     cleared++;
                 }
-                sendMessage(player, "commands.team.cleared", NamedTextColor.YELLOW,
+                messageService.send(player, "commands.team.cleared", NamedTextColor.YELLOW,
                         "count", String.valueOf(cleared), "team", teamName);
                 teamGui.openTeamMenu(player, teamName);
             }
-            case 50 -> teamGui.openKitPicker(player, teamName);
-            case 53 -> {
+            case TeamGuiSlots.TEAM_SET_KIT -> teamGui.openKitPicker(player, teamName);
+            case TeamGuiSlots.TEAM_DELETE -> {
                 teamManager.deleteTeam(teamName);
-                sendMessage(player, "commands.team.deleted", NamedTextColor.GREEN, "team", teamName);
+                messageService.send(player, "commands.team.deleted", NamedTextColor.GREEN, "team", teamName);
                 teamGui.openMainMenu(player);
             }
             default -> handleMemberHeadClick(player, teamName, slot);
@@ -233,7 +264,7 @@ public class TeamGuiListener implements Listener {
     }
 
     private void handleMemberHeadClick(Player player, String teamName, int slot) {
-        if (slot < 0 || slot > 27) {
+        if (slot < TeamGuiSlots.MEMBER_FIRST || slot > TeamGuiSlots.MEMBER_LAST) {
             return;
         }
         List<UUID> members = new ArrayList<>(teamManager.getTeamMembers(teamName));
@@ -244,46 +275,39 @@ public class TeamGuiListener implements Listener {
         UUID memberId = members.get(slot);
         String memberName = Bukkit.getOfflinePlayer(memberId).getName();
         teamManager.removePlayer(memberId);
-        sendMessage(player, "commands.team.player-removed", NamedTextColor.YELLOW,
+        messageService.send(player, "commands.team.player-removed", NamedTextColor.YELLOW,
                 "player", memberName != null ? memberName : memberId.toString(), "team", teamName);
         teamGui.openTeamMenu(player, teamName);
     }
 
     private void handleKitPickerClick(Player player, String teamName, int slot, ItemStack clicked) {
-        if (slot == 45) {
+        if (slot == TeamGuiSlots.KIT_BACK) {
             teamGui.openTeamMenu(player, teamName);
             return;
         }
-        if (slot == 49) {
+        if (slot == TeamGuiSlots.KIT_REMOVE) {
             teamManager.setTeamKit(teamName, null);
-            sendMessage(player, "commands.team.kit-removed", NamedTextColor.YELLOW, "team", teamName);
+            messageService.send(player, "commands.team.kit-removed", NamedTextColor.YELLOW, "team", teamName);
             teamGui.openTeamMenu(player, teamName);
             return;
         }
-        if (clicked.getItemMeta() == null || !clicked.getItemMeta().hasDisplayName()) {
+        if (clicked.getItemMeta() == null) {
             return;
         }
 
-        String kitName = PlainTextComponentSerializer.plainText().serialize(clicked.getItemMeta().displayName());
-        if (!kitManager.getKitNames().contains(kitName)) {
+        String kitName = clicked.getItemMeta().getPersistentDataContainer()
+                .get(teamGui.kitNameKey(), PersistentDataType.STRING);
+        if (kitName == null || !kitManager.getKitNames().contains(kitName)) {
             return;
         }
 
         teamManager.setTeamKit(teamName, kitName);
-        sendMessage(player, "commands.team.kit-set", NamedTextColor.GREEN, "kit", kitName, "team", teamName);
+        messageService.send(player, "commands.team.kit-set", NamedTextColor.GREEN, "kit", kitName, "team", teamName);
         teamGui.openTeamMenu(player, teamName);
     }
 
-    /**
-     * Intercepts the player's next chat message, cancels it, and runs the callback on the
-     * main thread. The pending entry is consumed regardless of what the player types.
-     */
-    private void promptChat(Player player, String prompt, Consumer<String> callback) {
+    private void promptChat(Player player, String promptKey, Consumer<String> callback) {
         pendingPrompts.put(player.getUniqueId(), callback);
-        player.sendMessage(prefix.append(Component.text(prompt, NamedTextColor.YELLOW)));
-    }
-
-    private void sendMessage(Player player, String key, NamedTextColor color, String... placeholders) {
-        player.sendMessage(prefix.append(Component.text(messageService.get(key, placeholders), color)));
+        messageService.send(player, promptKey, NamedTextColor.YELLOW);
     }
 }

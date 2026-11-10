@@ -1,15 +1,14 @@
 package com.fakerevive.kit;
 
+import com.fakerevive.storage.EntryNameValidator;
+import com.fakerevive.storage.YamlFileStore;
 import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashSet;
@@ -17,42 +16,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Manages named server kits — snapshots of a player's inventory, armor slots, and offhand.
- * Kits are stored in {@code kits.yml} inside the plugin's data folder. Items are serialised
- * as Base64-encoded byte arrays via Paper's {@link ItemStack#serializeAsBytes()}.
- */
 public class KitManager {
-
     private static final int INVENTORY_SIZE = 36;
     private static final int ARMOR_SIZE = 4;
 
     private final JavaPlugin plugin;
-    private final File kitsFile;
-    private final YamlConfiguration kitsConfig = new YamlConfiguration();
+    private final YamlFileStore store;
+    private YamlConfiguration kitsConfig = new YamlConfiguration();
     private final Set<String> kitNames = new HashSet<>();
+    private final Set<String> kitsWithReportedDefects = new HashSet<>();
 
     public KitManager(JavaPlugin plugin) {
         this.plugin = plugin;
-        this.kitsFile = new File(plugin.getDataFolder(), "kits.yml");
+        this.store = new YamlFileStore(plugin.getDataFolder().toPath().resolve("kits.yml"), plugin.getLogger());
     }
 
-    /**
-     * Loads kit names from {@code kits.yml}. Safe to call multiple times; clears the
-     * in-memory kit list before reloading. A missing file is treated as an empty kit list.
-     */
     public void loadKits() {
         kitNames.clear();
-        if (!kitsFile.exists()) {
-            return;
-        }
-
-        try {
-            kitsConfig.load(kitsFile);
-        } catch (IOException | InvalidConfigurationException e) {
-            plugin.getLogger().warning("Failed to load kits.yml: " + e.getMessage());
-            return;
-        }
+        kitsWithReportedDefects.clear();
+        kitsConfig = store.load();
 
         ConfigurationSection kitsSection = kitsConfig.getConfigurationSection("kits");
         if (kitsSection != null) {
@@ -60,11 +42,11 @@ public class KitManager {
         }
     }
 
-    /**
-     * Captures the player's current inventory, armor, and offhand as a named kit and
-     * persists it to {@code kits.yml}, overwriting any existing kit with the same name.
-     */
     public void saveKit(String name, Player player) {
+        if (!EntryNameValidator.isValid(name)) {
+            throw new IllegalArgumentException("Invalid kit name: " + name);
+        }
+
         PlayerInventory inventory = player.getInventory();
 
         List<String> serializedInventory = new ArrayList<>(INVENTORY_SIZE);
@@ -83,82 +65,65 @@ public class KitManager {
         kitsConfig.set(path + ".offhand", serialize(inventory.getItemInOffHand()));
 
         kitNames.add(name);
-        save();
+        kitsWithReportedDefects.remove(name);
+        store.save(kitsConfig);
     }
 
-    /**
-     * Equips the named kit onto the player by setting inventory, armor, and offhand contents
-     * directly. Items are placed into the correct slots regardless of inventory capacity —
-     * nothing is dropped.
-     * @return {@code true} if the kit was found and applied; {@code false} if no kit with
-     *     that name exists.
-     */
     public boolean equipKit(String name, Player player) {
         if (!kitNames.contains(name)) {
             return false;
         }
 
         String path = "kits." + name;
+        List<String> failedSlots = new ArrayList<>();
+
         List<String> serializedInventory = kitsConfig.getStringList(path + ".inventory");
-        List<String> serializedArmor = kitsConfig.getStringList(path + ".armor");
-        String serializedOffhand = kitsConfig.getString(path + ".offhand", "");
-
         ItemStack[] inventoryContents = new ItemStack[INVENTORY_SIZE];
-        for (int i = 0; i < INVENTORY_SIZE && i < serializedInventory.size(); i++) {
-            inventoryContents[i] = deserialize(serializedInventory.get(i));
+        for (int slot = 0; slot < INVENTORY_SIZE && slot < serializedInventory.size(); slot++) {
+            inventoryContents[slot] = deserialize(serializedInventory.get(slot), "inventory " + slot, failedSlots);
         }
 
+        List<String> serializedArmor = kitsConfig.getStringList(path + ".armor");
         ItemStack[] armorContents = new ItemStack[ARMOR_SIZE];
-        for (int i = 0; i < ARMOR_SIZE && i < serializedArmor.size(); i++) {
-            armorContents[i] = deserialize(serializedArmor.get(i));
+        for (int slot = 0; slot < ARMOR_SIZE && slot < serializedArmor.size(); slot++) {
+            armorContents[slot] = deserialize(serializedArmor.get(slot), "armor " + slot, failedSlots);
         }
+
+        ItemStack offhandContents = deserialize(kitsConfig.getString(path + ".offhand", ""), "offhand", failedSlots);
+        reportDefects(name, failedSlots);
 
         PlayerInventory inventory = player.getInventory();
-        // Slots 0-35 are exactly the storage slots, so this matches setStorageContents() while
-        // staying within the plain Inventory API.
-        for (int i = 0; i < INVENTORY_SIZE; i++) {
-            inventory.setItem(i, inventoryContents[i]);
+        for (int slot = 0; slot < INVENTORY_SIZE; slot++) {
+            inventory.setItem(slot, inventoryContents[slot]);
         }
         inventory.setArmorContents(armorContents);
-        inventory.setItemInOffHand(deserialize(serializedOffhand));
+        inventory.setItemInOffHand(offhandContents);
         player.updateInventory();
 
         return true;
     }
 
-    /**
-     * Adds the named kit's inventory, armor, and offhand contents to the player using
-     * addItem(), so items that don't fit overflow onto the ground at the player's feet
-     * instead of being lost.
-     *
-     * @return {@code true} if the kit was found; {@code false} otherwise.
-     */
     public boolean giveKit(String name, Player player) {
         if (!kitNames.contains(name)) {
             return false;
         }
 
         String path = "kits." + name;
+        List<String> failedSlots = new ArrayList<>();
         List<ItemStack> items = new ArrayList<>();
 
-        for (String entry : kitsConfig.getStringList(path + ".inventory")) {
-            ItemStack item = deserialize(entry);
-            if (item != null) {
-                items.add(item);
-            }
+        List<String> serializedInventory = kitsConfig.getStringList(path + ".inventory");
+        for (int slot = 0; slot < serializedInventory.size(); slot++) {
+            addIfPresent(items, deserialize(serializedInventory.get(slot), "inventory " + slot, failedSlots));
         }
 
-        for (String entry : kitsConfig.getStringList(path + ".armor")) {
-            ItemStack item = deserialize(entry);
-            if (item != null) {
-                items.add(item);
-            }
+        List<String> serializedArmor = kitsConfig.getStringList(path + ".armor");
+        for (int slot = 0; slot < serializedArmor.size(); slot++) {
+            addIfPresent(items, deserialize(serializedArmor.get(slot), "armor " + slot, failedSlots));
         }
 
-        ItemStack offhand = deserialize(kitsConfig.getString(path + ".offhand", ""));
-        if (offhand != null) {
-            items.add(offhand);
-        }
+        addIfPresent(items, deserialize(kitsConfig.getString(path + ".offhand", ""), "offhand", failedSlots));
+        reportDefects(name, failedSlots);
 
         Map<Integer, ItemStack> overflow = player.getInventory().addItem(items.toArray(new ItemStack[0]));
         overflow.values().forEach(item -> player.getWorld().dropItemNaturally(player.getLocation(), item));
@@ -166,34 +131,34 @@ public class KitManager {
         return true;
     }
 
-    /**
-     * Deletes the named kit and removes it from kits.yml.
-     *
-     * @return {@code true} if the kit existed and was deleted; {@code false} if not found.
-     */
     public boolean deleteKit(String name) {
         if (!kitNames.contains(name)) {
             return false;
         }
 
         kitNames.remove(name);
+        kitsWithReportedDefects.remove(name);
         kitsConfig.set("kits." + name, null);
-        save();
+        store.save(kitsConfig);
         return true;
     }
 
-    /** @return a snapshot of all currently registered kit names; modifications do not affect the registry. */
     public Set<String> getKitNames() {
         return new HashSet<>(kitNames);
     }
 
-    private void save() {
-        try {
-            plugin.getDataFolder().mkdirs();
-            kitsConfig.save(kitsFile);
-        } catch (IOException e) {
-            plugin.getLogger().warning("Failed to save kits.yml: " + e.getMessage());
+    private void addIfPresent(List<ItemStack> items, ItemStack item) {
+        if (item != null) {
+            items.add(item);
         }
+    }
+
+    private void reportDefects(String kitName, List<String> failedSlots) {
+        if (failedSlots.isEmpty() || !kitsWithReportedDefects.add(kitName)) {
+            return;
+        }
+        plugin.getLogger().warning("Kit \"" + kitName + "\" contains " + failedSlots.size()
+                + " unreadable item(s) that were skipped. Affected slots: " + String.join(", ", failedSlots));
     }
 
     private String serialize(ItemStack item) {
@@ -203,10 +168,15 @@ public class KitManager {
         return Base64.getEncoder().encodeToString(item.serializeAsBytes());
     }
 
-    private ItemStack deserialize(String data) {
+    private ItemStack deserialize(String data, String slotLabel, List<String> failedSlots) {
         if (data == null || data.isEmpty()) {
             return null;
         }
-        return ItemStack.deserializeBytes(Base64.getDecoder().decode(data));
+        try {
+            return ItemStack.deserializeBytes(Base64.getDecoder().decode(data));
+        } catch (RuntimeException exception) {
+            failedSlots.add(slotLabel);
+            return null;
+        }
     }
 }

@@ -1,7 +1,6 @@
 package com.fakerevive.armor;
 
 import com.fakerevive.message.MessageService;
-import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -23,35 +22,21 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * Enforces the armor locks tracked by {@link ArmorLockManager}. Behaves like Curse of Binding
- * without enchanting the items: a locked player can still <em>put on</em> armor, but every way of
- * taking a worn piece back off is cancelled. Death is deliberately left alone, so locked armor
- * drops as usual.
- */
 public class ArmorLockListener implements Listener {
-
     private static final long NOTICE_COOLDOWN_MILLIS = 1500L;
 
     private final JavaPlugin plugin;
     private final ArmorLockManager armorLockManager;
     private final MessageService messageService;
-    private final Component prefix;
     private final Map<UUID, Long> lastNotice = new HashMap<>();
 
     public ArmorLockListener(JavaPlugin plugin, ArmorLockManager armorLockManager,
-                             MessageService messageService, Component prefix) {
+                             MessageService messageService) {
         this.plugin = plugin;
         this.armorLockManager = armorLockManager;
         this.messageService = messageService;
-        this.prefix = prefix;
     }
 
-    /**
-     * Covers every click that can pull a piece out of an armor slot: normal and shift clicks,
-     * hotbar number swaps, offhand swaps, and Q/Ctrl+Q drops. All of them report the armor slot
-     * as the clicked slot, so a single slot-type check catches them.
-     */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player) || !armorLockManager.isLocked(player.getUniqueId())) {
@@ -63,7 +48,6 @@ public class ArmorLockListener implements Listener {
             return;
         }
 
-        // An empty armor slot is fair game - locking prevents removal, not equipping.
         if (isEmpty(event.getCurrentItem())) {
             return;
         }
@@ -72,7 +56,6 @@ public class ArmorLockListener implements Listener {
         notifyBlocked(player);
     }
 
-    /** Dragging across an occupied armor slot can swap the worn piece out, so block it too. */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onInventoryDrag(InventoryDragEvent event) {
         if (!(event.getWhoClicked() instanceof Player player) || !armorLockManager.isLocked(player.getUniqueId())) {
@@ -93,10 +76,6 @@ public class ArmorLockListener implements Listener {
         }
     }
 
-    /**
-     * The one removal path {@link #onInventoryClick} can't see: right-clicking with an armor piece
-     * in hand swaps out whatever is already worn in that slot (the classic elytra/chestplate swap).
-     */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlayerInteract(PlayerInteractEvent event) {
         if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) {
@@ -122,10 +101,6 @@ public class ArmorLockListener implements Listener {
         notifyBlocked(player);
     }
 
-    /**
-     * Maps an item to the armor slot it would be worn in, or {@code null} if it isn't wearable.
-     * Uses the material name suffix so new armor tiers are picked up automatically.
-     */
     private @Nullable EquipmentSlot armorSlotFor(Material material) {
         if (material == Material.ELYTRA) {
             return EquipmentSlot.CHEST;
@@ -150,10 +125,6 @@ public class ArmorLockListener implements Listener {
         return null;
     }
 
-    /**
-     * Sends the "armor is locked" action bar, throttled per player so that holding shift-click
-     * doesn't flood the bar with restarts of the same message.
-     */
     private void notifyBlocked(Player player) {
         if (!plugin.getConfig().getBoolean("armor.notify-blocked", true)) {
             return;
@@ -166,8 +137,7 @@ public class ArmorLockListener implements Listener {
         }
 
         lastNotice.put(player.getUniqueId(), now);
-        player.sendActionBar(prefix.append(Component.text(
-                messageService.get("armor.locked-actionbar"), NamedTextColor.RED)));
+        player.sendActionBar(messageService.prefixed("armor.locked-actionbar", NamedTextColor.RED));
     }
 
     private boolean isEmpty(@Nullable ItemStack item) {

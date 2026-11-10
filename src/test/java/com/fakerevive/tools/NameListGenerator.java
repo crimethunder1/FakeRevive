@@ -27,21 +27,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Standalone dev tool (not wired into the plugin runtime) that generates realistic-looking
- * Minecraft username candidates, checks each against the real Mojang API to confirm it doesn't
- * belong to an existing account, and pairs each verified-free name with a skin borrowed from a
- * real account encountered as TAKEN (fetched once via the Mojang session-server and embedded as
- * a signed texture, so /revive needs no network access at runtime). Writes the paired identities
- * to names.json.
- *
- * Run manually, e.g.:
- *   javac -d out src/main/java/com/fakerevive/disguise/NameVocabulary.java \
- *              src/main/java/com/fakerevive/tools/NameListGenerator.java
- *   java -cp out com.fakerevive.tools.NameListGenerator src/main/resources/names.json
- */
 public final class NameListGenerator {
-
     private static final String[] ADJECTIVES = NameVocabulary.ADJECTIVES;
     private static final String[] NOUNS = NameVocabulary.NOUNS;
     private static final String[] SINGLE_WORDS = NameVocabulary.SINGLE_WORDS;
@@ -62,10 +48,10 @@ public final class NameListGenerator {
     private static final String NAME_LOOKUP_URI_PREFIX = "https://api.mojang.com/users/profiles/minecraft/";
     private static final String SESSION_SERVER_URI_PREFIX = "https://sessionserver.mojang.com/session/minecraft/profile/";
 
-    private record ProfileLookup(boolean free, String uuid) {
+    private record ProfileLookup(boolean free, String uniqueId) {
     }
 
-    private record SkinDonor(String uuid, String name, String value, String signature) {
+    private record SkinDonor(String uniqueId, String name, String value, String signature) {
     }
 
     private NameListGenerator() {
@@ -74,9 +60,6 @@ public final class NameListGenerator {
     public static void main(String[] args) throws Exception {
         Path outputFile = Path.of(args.length > 0 ? args[0] : "src/main/resources/names.json");
 
-        // Resuming from a prior run: skip candidates already checked (no repeat API calls) and
-        // seed freeNames/donors from what a prior run already found, so an interrupted
-        // multi-hour run can just be re-invoked to keep making progress.
         Map<String, String> nameProgress = loadProgress(NAME_PROGRESS_FILE);
         List<String> freeNames = new ArrayList<>();
         for (Map.Entry<String, String> entry : nameProgress.entrySet()) {
@@ -93,8 +76,6 @@ public final class NameListGenerator {
         HttpClient httpClient = HttpClient.newHttpClient();
 
         try {
-            // A name already known to be TAKEN belongs to a real account we can borrow a skin
-            // from - harvest those before spending any calls checking new candidates.
             for (Map.Entry<String, String> entry : nameProgress.entrySet()) {
                 if (donors.size() >= TARGET_DONOR_COUNT) {
                     break;
@@ -105,7 +86,7 @@ public final class NameListGenerator {
                 }
                 Optional<ProfileLookup> profile = lookupProfile(httpClient, candidate);
                 if (profile.isPresent() && !profile.get().free()) {
-                    fetchAndStoreDonor(httpClient, candidate, profile.get().uuid(), donors);
+                    fetchAndStoreDonor(httpClient, candidate, profile.get().uniqueId(), donors);
                     writeIdentitiesJson(outputFile, freeNames, donors);
                 }
             }
@@ -141,7 +122,7 @@ public final class NameListGenerator {
                     appendProgress(NAME_PROGRESS_FILE, "TAKEN", candidate);
                     nameProgress.put(candidate, "TAKEN");
                     if (needMoreDonors) {
-                        fetchAndStoreDonor(httpClient, candidate, profile.get().uuid(), donors);
+                        fetchAndStoreDonor(httpClient, candidate, profile.get().uniqueId(), donors);
                     }
                 }
 
@@ -159,8 +140,6 @@ public final class NameListGenerator {
         Random random = new Random(GENERATION_SEED);
         List<String> combinedBases = new ArrayList<>();
 
-        // Adjective+Noun pairs in rotating styles (CamelCase / underscore / lowercase) so no
-        // single style dominates if the verification pass is interrupted partway through.
         int pairIndex = 0;
         adjectiveLoop:
         for (String adjective : ADJECTIVES) {
@@ -192,8 +171,8 @@ public final class NameListGenerator {
             addNumberedVariants(candidates, noun, 3, 1, 999, random);
         }
 
-        for (int i = 0; i < combinedBases.size(); i += 20) {
-            addNumberedVariants(candidates, combinedBases.get(i), 2, 1, 9999, random);
+        for (int index = 0; index < combinedBases.size(); index += 20) {
+            addNumberedVariants(candidates, combinedBases.get(index), 2, 1, 9999, random);
         }
 
         List<String> allWords = new ArrayList<>(NOUNS.length + SINGLE_WORDS.length);
@@ -218,15 +197,13 @@ public final class NameListGenerator {
         }
 
         List<String> result = new ArrayList<>(candidates);
-        // Fixed-seed shuffle: a partial/interrupted verification pass still yields a
-        // representative mix across all pattern families instead of exhausting one style first.
         Collections.shuffle(result, random);
         return result;
     }
 
     private static void addNumberedVariants(
             Set<String> candidates, String base, int count, int minValue, int maxValue, Random random) {
-        for (int i = 0; i < count && candidates.size() < MAX_CANDIDATE_POOL; i++) {
+        for (int index = 0; index < count && candidates.size() < MAX_CANDIDATE_POOL; index++) {
             int value = minValue + random.nextInt(maxValue - minValue + 1);
             addIfValid(candidates, base + value);
         }
@@ -240,11 +217,6 @@ public final class NameListGenerator {
         }
     }
 
-    /**
-     * @return empty if the name is currently unclaimed (404), or free/taken info otherwise; the
-     *         request could not be completed (rate-limited or network-flaky past the retry
-     *         budget) is signalled by an empty Optional at the call site.
-     */
     private static Optional<ProfileLookup> lookupProfile(HttpClient httpClient, String name) throws InterruptedException {
         Optional<HttpResponse<String>> response = getWithRetry(httpClient, NAME_LOOKUP_URI_PREFIX + name);
         if (response.isEmpty()) {
@@ -255,18 +227,16 @@ public final class NameListGenerator {
             return Optional.of(new ProfileLookup(true, null));
         }
         if (httpResponse.statusCode() == 200) {
-            Optional<String> uuid = extractJsonField(httpResponse.body(), "id");
-            return uuid.map(id -> new ProfileLookup(false, id));
+            Optional<String> uniqueId = extractJsonField(httpResponse.body(), "id");
+            return uniqueId.map(id -> new ProfileLookup(false, id));
         }
         return Optional.empty();
     }
 
     private static void fetchAndStoreDonor(
-            HttpClient httpClient, String name, String uuid, Map<String, SkinDonor> donors) throws InterruptedException {
-        // unsigned=false is required, otherwise the response omits the "signature" field
-        // entirely and the texture can't be used in a valid GameProfile.
+            HttpClient httpClient, String name, String uniqueId, Map<String, SkinDonor> donors) throws InterruptedException {
         Optional<HttpResponse<String>> response =
-                getWithRetry(httpClient, SESSION_SERVER_URI_PREFIX + uuid + "?unsigned=false");
+                getWithRetry(httpClient, SESSION_SERVER_URI_PREFIX + uniqueId + "?unsigned=false");
         if (response.isEmpty() || response.get().statusCode() != 200) {
             return;
         }
@@ -277,7 +247,7 @@ public final class NameListGenerator {
             return;
         }
 
-        SkinDonor donor = new SkinDonor(uuid, name, value.get(), signature.get());
+        SkinDonor donor = new SkinDonor(uniqueId, name, value.get(), signature.get());
         donors.put(name, donor);
         appendDonorProgress(DONOR_PROGRESS_FILE, donor);
         System.out.println("Skin donor: " + name + " (" + donors.size() + "/" + TARGET_DONOR_COUNT + ")");
@@ -288,10 +258,6 @@ public final class NameListGenerator {
         return matcher.find() ? Optional.of(matcher.group(1)) : Optional.empty();
     }
 
-    /**
-     * @return empty if the request could not be completed (rate-limited or network-flaky past
-     *         the retry budget), otherwise the response (whatever its status code).
-     */
     private static Optional<HttpResponse<String>> getWithRetry(HttpClient httpClient, String uri) throws InterruptedException {
         Duration backoff = INITIAL_BACKOFF;
 
@@ -310,8 +276,8 @@ public final class NameListGenerator {
                     return Optional.of(response);
                 }
                 retryReason = "429 rate limit";
-            } catch (IOException e) {
-                retryReason = e.getClass().getSimpleName() + ": " + e.getMessage();
+            } catch (IOException exception) {
+                retryReason = exception.getClass().getSimpleName() + ": " + exception.getMessage();
             }
 
             if (attempt == MAX_RETRIES_ON_RATE_LIMIT) {
@@ -341,8 +307,8 @@ public final class NameListGenerator {
                 }
                 statuses.put(line.substring(space + 1), line.substring(0, space));
             }
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
+        } catch (IOException exception) {
+            throw new UncheckedIOException(exception);
         }
         return statuses;
     }
@@ -357,8 +323,8 @@ public final class NameListGenerator {
                 writer.write(status + " " + name);
                 writer.newLine();
             }
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
+        } catch (IOException exception) {
+            throw new UncheckedIOException(exception);
         }
     }
 
@@ -375,8 +341,8 @@ public final class NameListGenerator {
                 }
                 donors.put(parts[1], new SkinDonor(parts[0], parts[1], parts[2], parts[3]));
             }
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
+        } catch (IOException exception) {
+            throw new UncheckedIOException(exception);
         }
         return donors;
     }
@@ -388,11 +354,11 @@ public final class NameListGenerator {
             }
             try (BufferedWriter writer = Files.newBufferedWriter(donorFile, StandardCharsets.UTF_8,
                     StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
-                writer.write(donor.uuid() + " " + donor.name() + " " + donor.value() + " " + donor.signature());
+                writer.write(donor.uniqueId() + " " + donor.name() + " " + donor.value() + " " + donor.signature());
                 writer.newLine();
             }
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
+        } catch (IOException exception) {
+            throw new UncheckedIOException(exception);
         }
     }
 
@@ -402,12 +368,12 @@ public final class NameListGenerator {
         int pairCount = Math.min(freeNames.size(), donorList.size());
 
         StringBuilder json = new StringBuilder("[\n");
-        for (int i = 0; i < pairCount; i++) {
-            SkinDonor donor = donorList.get(i);
-            json.append("  {\"name\": \"").append(freeNames.get(i)).append("\", ")
+        for (int index = 0; index < pairCount; index++) {
+            SkinDonor donor = donorList.get(index);
+            json.append("  {\"name\": \"").append(freeNames.get(index)).append("\", ")
                     .append("\"skinValue\": \"").append(donor.value()).append("\", ")
                     .append("\"skinSignature\": \"").append(donor.signature()).append("\"}");
-            json.append(i < pairCount - 1 ? ",\n" : "\n");
+            json.append(index < pairCount - 1 ? ",\n" : "\n");
         }
         json.append("]\n");
 

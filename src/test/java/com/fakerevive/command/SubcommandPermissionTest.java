@@ -1,6 +1,7 @@
 package com.fakerevive.command;
 
 import com.fakerevive.FakeRevivePlugin;
+import com.fakerevive.support.PluginLoader;
 import com.fakerevive.disguise.FakeIdentity;
 import com.fakerevive.disguise.MojangIdentityFetcher;
 import net.kyori.adventure.text.Component;
@@ -25,7 +26,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SubcommandPermissionTest {
-
     private static final Component PREFIX = Component.text("[FakeRevive] ", NamedTextColor.AQUA);
     private static final Component NO_PERMISSION =
             Component.text("Du hast keine Berechtigung für diesen Befehl.", NamedTextColor.RED);
@@ -41,21 +41,14 @@ class SubcommandPermissionTest {
 
     @BeforeEach
     void setUp() {
-        FakeRevivePlugin.setIdentityFetcherFactoryForTesting(() -> new MojangIdentityFetcher() {
-            @Override
-            public Optional<FakeIdentity> fetchNewIdentity(Set<String> excludedNames, int maxAttempts) {
-                return Optional.empty();
-            }
-        });
         server = MockBukkit.mock();
-        plugin = MockBukkit.load(FakeRevivePlugin.class);
+        plugin = PluginLoader.load();
         player = server.addPlayer("Helper");
     }
 
     @AfterEach
     void tearDown() {
         MockBukkit.unmock();
-        FakeRevivePlugin.setIdentityFetcherFactoryForTesting(MojangIdentityFetcher::new);
     }
 
     @Test
